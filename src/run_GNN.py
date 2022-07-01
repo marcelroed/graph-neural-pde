@@ -101,12 +101,14 @@ def test(model, data, pos_encoding=None, opt=None):  # opt required for runtime 
         accs.append(acc)
     return accs
 
+
 def print_model_params(model):
     print(model)
     for name, param in model.named_parameters():
         if param.requires_grad:
             print(name)
             print(param.data.shape)
+
 
 def unpack_gcn_params(opt):
     'temp function for ablation'
@@ -118,8 +120,9 @@ def unpack_gcn_params(opt):
     opt['gcn_non_lin'] = opt['gcn_params'][5]
     return opt
 
+
 def unpack_graff_params(opt):
-    'temp function for "focus" models'
+    """temp function for "focus" models"""
     # w_style: diag_dom, diag
     # w_diag_init: uniform, uniform
     # w_param_free: True, False
@@ -138,12 +141,14 @@ def unpack_graff_params(opt):
     opt['add_source'] = opt['graff_params'][7]
     return opt
 
+
 def unpack_omega_params(opt):
-    'temp function to help ablation'
+    """temp function to help ablation"""
     opt['omega'] = opt['Omega_params'][0]
     opt['omega_diag'] = opt['Omega_params'][1]
     opt['omega_diag_val'] = opt['Omega_params'][2]
     return opt
+
 
 def main(cmd_opt):
     if cmd_opt['use_best_params']:
@@ -154,11 +159,11 @@ def main(cmd_opt):
 
     opt = shared_graff_params(opt)
     opt = hetero_params(opt)
-    if opt['gcn_params']: #temp function for ablation
+    if opt['gcn_params']:  # temp function for ablation
         unpack_gcn_params(opt)
-    if opt['graff_params']: #temp function for ablation
+    if opt['graff_params']:  # temp function for ablation
         unpack_graff_params(opt)
-    if opt['omega_params']: #temp function for ablation
+    if opt['omega_params']:  # temp function for ablation
         unpack_omega_params(opt)
 
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -179,11 +184,12 @@ def main(cmd_opt):
                                                     num_development=5000 if opt["dataset"] == "CoauthorCS" else 1500)
         if opt['geom_gcn_splits']:
             if opt['dataset'] == "Citeseer":
-                dataset = get_dataset(opt, '../data', opt['not_lcc']) #geom-gcn citeseer uses splits over LCC and not_LCC so need to reload each rep/split
+                dataset = get_dataset(opt, '../data', opt[
+                    'not_lcc'])  # geom-gcn citeseer uses splits over LCC and not_LCC so need to reload each rep/split
             data = get_fixed_splits(dataset.data, opt['dataset'], rep)
             dataset.data = data
         if opt['dataset'] == 'syn_cora':
-            dataset = get_pyg_syn_cora("../data", opt, rep=rep+1)
+            dataset = get_pyg_syn_cora("../data", opt, rep=rep + 1)
 
         data = dataset.data.to(device)
         model = GNN(opt, dataset, device).to(device)
@@ -230,7 +236,7 @@ def main(cmd_opt):
         test_acc_mean, val_acc_mean, train_acc_mean = np.mean(results, axis=0) * 100
         test_acc_std = np.sqrt(np.var(results, axis=0)[0]) * 100
         results = {'test_mean': test_acc_mean, 'val_mean': val_acc_mean, 'train_mean': train_acc_mean,
-                             'test_acc_std': test_acc_std}
+                   'test_acc_std': test_acc_std}
         print(results)
         return test_acc_mean, val_acc_mean, train_acc_mean, test_acc_std
     else:
@@ -239,7 +245,7 @@ def main(cmd_opt):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    #run args
+    # run args
     parser.add_argument('--use_best_params', action='store_true', help="flag to take the best graff params")
     parser.add_argument('--gpu', type=int, default=0, help="GPU to run on (default 0)")
     parser.add_argument('--epoch', type=int, default=100, help='Number of training epochs per iteration.')
@@ -249,14 +255,18 @@ if __name__ == '__main__':
     parser.add_argument('--decay', type=float, default=5e-4, help='Weight decay for optimization')
 
     # data args
-    parser.add_argument('--dataset', type=str, default='Cora', help='Cora, Citeseer, Pubmed, Computers, Photo, CoauthorCS, ogbn-arxiv')
+    parser.add_argument('--dataset', type=str, default='Cora',
+                        help='Cora, Citeseer, Pubmed, Computers, Photo, CoauthorCS, ogbn-arxiv')
     parser.add_argument('--data_norm', type=str, default='rw', help='rw for random walk, gcn for symmetric gcn norm')
     parser.add_argument('--self_loop_weight', type=float, help='Weight of self-loops.')
     parser.add_argument('--use_labels', dest='use_labels', action='store_true', help='Also diffuse labels')
-    parser.add_argument('--label_rate', type=float, default=0.5, help='% of training labels to use when --use_labels is set.')
+    parser.add_argument('--label_rate', type=float, default=0.5,
+                        help='% of training labels to use when --use_labels is set.')
     parser.add_argument('--planetoid_split', action='store_true', help='use planetoid splits for Cora/Citeseer/Pubmed')
-    parser.add_argument('--geom_gcn_splits', dest='geom_gcn_splits', action='store_true', help='use the 10 fixed splits from https://arxiv.org/abs/2002.05287')
-    parser.add_argument('--num_splits', type=int, dest='num_splits', default=1, help='the number of splits to repeat the results on')
+    parser.add_argument('--geom_gcn_splits', dest='geom_gcn_splits', action='store_true',
+                        help='use the 10 fixed splits from https://arxiv.org/abs/2002.05287')
+    parser.add_argument('--num_splits', type=int, dest='num_splits', default=1,
+                        help='the number of splits to repeat the results on')
     parser.add_argument("--not_lcc", action="store_false", help="don't use the largest connected component")
     parser.add_argument('--hetero_SL', action='store_true', help='control self loops for Chameleon/Squirrel')
     parser.add_argument('--hetero_undir', action='store_true', help='control undirected for Chameleon/Squirrel')
@@ -265,32 +275,44 @@ if __name__ == '__main__':
     parser.add_argument('--block', type=str, help='constant, mixed, attention, hard_attention')
     parser.add_argument('--function', type=str, help='laplacian, transformer, greed, GAT')
     parser.add_argument('--hidden_dim', type=int, default=16, help='Hidden dimension.')
-    parser.add_argument('--fc_out', dest='fc_out', action='store_true', help='Add a fully connected layer to the decoder.')
+    parser.add_argument('--fc_out', dest='fc_out', action='store_true',
+                        help='Add a fully connected layer to the decoder.')
     parser.add_argument('--input_dropout', type=float, default=0.5, help='Input dropout rate.')
     parser.add_argument('--dropout', type=float, default=0.0, help='Dropout rate.')
     parser.add_argument("--batch_norm", dest='batch_norm', action='store_true', help='search over reg params')
     parser.add_argument('--alpha', type=float, default=1.0, help='Factor in front matrix A.')
     parser.add_argument('--alpha_dim', type=str, default='sc', help='choose either scalar (sc) or vector (vc) alpha')
-    parser.add_argument('--no_alpha_sigmoid', dest='no_alpha_sigmoid', action='store_true', help='apply sigmoid before multiplying by alpha')
+    parser.add_argument('--no_alpha_sigmoid', dest='no_alpha_sigmoid', action='store_true',
+                        help='apply sigmoid before multiplying by alpha')
     parser.add_argument('--beta_dim', type=str, default='sc', help='choose either scalar (sc) or vector (vc) beta')
-    parser.add_argument('--use_mlp', dest='use_mlp', action='store_true', help='Add a fully connected layer to the encoder.')
-    parser.add_argument('--add_source', dest='add_source', action='store_true', help='If try get rid of alpha param and the beta*x0 source term')
+    parser.add_argument('--use_mlp', dest='use_mlp', action='store_true',
+                        help='Add a fully connected layer to the encoder.')
+    parser.add_argument('--add_source', dest='add_source', action='store_true',
+                        help='If try get rid of alpha param and the beta*x0 source term')
     parser.add_argument('--XN_activation', action='store_true', help='whether to relu activate the terminal state')
     parser.add_argument('--m2_mlp', action='store_true', help='whether to use decoder mlp')
 
     # ODE args
     parser.add_argument('--time', type=float, default=1.0, help='End time of ODE integrator.')
-    parser.add_argument('--augment', action='store_true', help='double the length of the feature vector by appending zeros to stabilist ODE learning')
+    parser.add_argument('--augment', action='store_true',
+                        help='double the length of the feature vector by appending zeros to stabilist ODE learning')
     parser.add_argument('--method', type=str, help="set the numerical solver: dopri5, euler, rk4, midpoint")
-    parser.add_argument('--step_size', type=float, default=0.1, help='fixed step size when using fixed step solvers e.g. rk4')
+    parser.add_argument('--step_size', type=float, default=0.1,
+                        help='fixed step size when using fixed step solvers e.g. rk4')
     parser.add_argument('--max_iters', type=float, default=100, help='maximum number of integration steps')
-    parser.add_argument("--adjoint_method", type=str, default="adaptive_heun", help="set the numerical solver for the backward pass: dopri5, euler, rk4, midpoint")
-    parser.add_argument('--adjoint', dest='adjoint', action='store_true', help='use the adjoint ODE method to reduce memory footprint')
-    parser.add_argument('--adjoint_step_size', type=float, default=1, help='fixed step size when using fixed step adjoint solvers e.g. rk4')
+    parser.add_argument("--adjoint_method", type=str, default="adaptive_heun",
+                        help="set the numerical solver for the backward pass: dopri5, euler, rk4, midpoint")
+    parser.add_argument('--adjoint', dest='adjoint', action='store_true',
+                        help='use the adjoint ODE method to reduce memory footprint')
+    parser.add_argument('--adjoint_step_size', type=float, default=1,
+                        help='fixed step size when using fixed step adjoint solvers e.g. rk4')
     parser.add_argument('--tol_scale', type=float, default=1., help='multiplier for atol and rtol')
-    parser.add_argument("--tol_scale_adjoint", type=float, default=1.0, help="multiplier for adjoint_atol and adjoint_rtol")
-    parser.add_argument("--max_nfe", type=int, default=1000, help="Maximum number of function evaluations in an epoch. Stiff ODEs will hang if not set.")
-    parser.add_argument("--max_test_steps", type=int, default=100, help="Maximum number steps for the dopri5Early test integrator. used if getting OOM errors at test time")
+    parser.add_argument("--tol_scale_adjoint", type=float, default=1.0,
+                        help="multiplier for adjoint_atol and adjoint_rtol")
+    parser.add_argument("--max_nfe", type=int, default=1000,
+                        help="Maximum number of function evaluations in an epoch. Stiff ODEs will hang if not set.")
+    parser.add_argument("--max_test_steps", type=int, default=100,
+                        help="Maximum number steps for the dopri5Early test integrator. used if getting OOM errors at test time")
 
     # regularisation args
     parser.add_argument('--jacobian_norm2', type=float, default=None, help="int_t ||df/dx||_F^2")
@@ -313,7 +335,8 @@ if __name__ == '__main__':
     parser.add_argument('--omega_diag', type=str, default='free', help='free, const')
     parser.add_argument('--omega_params', nargs='+', default=None, help='list of Omega args for ablation')
     parser.add_argument('--w_style', type=str, default='sum', help='sum, prod, neg_prod, diag_dom, diag')
-    parser.add_argument('--w_diag_init', type=str, default='identity', help='init of diag elements [identity, uniform, linear]')
+    parser.add_argument('--w_diag_init', type=str, default='identity',
+                        help='init of diag elements [identity, uniform, linear]')
     parser.add_argument('--w_param_free', action='store_true', help='allow parameter to require gradient')
     parser.add_argument('--w_diag_init_q', type=float, default=1.0, help='slope of init of spectrum of W')
     parser.add_argument('--w_diag_init_r', type=float, default=0.0, help='intercept of init of spectrum of W')

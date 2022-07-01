@@ -4,7 +4,8 @@ This repository is the official implementation of [Graph Neural Networks as Grad
 
 ## Requirements
 
-Dependencies (with python >= 3.7): Main dependencies are torch==1.8.1 torch-cluster==1.5.9 torch-geometric==2.0.3 torch-scatter==2.0.9 torch-sparse==0.6.12 torch-spline-conv==1.2.1 torchdiffeq==0.2.3 
+Dependencies (with python >= 3.7): Main dependencies are torch==1.8.1 torch-cluster==1.5.9 torch-geometric==2.0.3
+torch-scatter==2.0.9 torch-sparse==0.6.12 torch-spline-conv==1.2.1 torchdiffeq==0.2.3
 Commands to install all the dependencies in a new conda environment
 
 ```
@@ -32,7 +33,8 @@ python run_GNN.py --dataset chameleon --use_best_params --num_splits 1
 
 ## Results
 
-Examples of our Gradient Flow Framework (GRAFF) achieve the following performance on the following semi-supervised node classification benchmarks:
+Examples of our Gradient Flow Framework (GRAFF) achieve the following performance on the following semi-supervised node
+classification benchmarks:
 
 |  | Texas | Wisconsin | Cornell | Film | Squirrel | Chameleon | Citeseer | Pubmed | Cora |
 |---|---|---|---|---|---|---|---|---|---|

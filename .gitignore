@@ -6,3 +6,5 @@ src/checkpoint
 images/
 ray_results/
 models/
+
+.idea/
