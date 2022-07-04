@@ -47,10 +47,9 @@ def main(opt):
                          max_iter=150)
         return acc, z
 
-
     ### here be main code
     t = time.time()
-    for epoch in range(1, opt['epochs']+1):
+    for epoch in range(1, opt['epochs'] + 1):
         loss = train()
         train_t = time.time() - t
         t = time.time()
@@ -58,46 +57,43 @@ def main(opt):
         test_t = time.time() - t
         print(f'Epoch: {epoch:02d}, Train: {train_t:.2f}, Test: {test_t:.2f},  Loss: {loss:.4f}, Acc: {acc:.4f}')
 
-
     acc, z = test()
     print(f"[i] Final accuracy is {acc}")
     print(f"[i] Embedding shape is {z.data.shape}")
 
     fname = "DW_%s_emb_%03d_wl_%03d_cs_%02d_wn_%02d_epochs_%03d.pickle" % (
-      opt['dataset'], opt['embedding_dim'], opt['walk_length'], opt['context_size'], opt['walks_per_node'], opt['epochs']
+        opt['dataset'], opt['embedding_dim'], opt['walk_length'], opt['context_size'], opt['walks_per_node'],
+        opt['epochs']
     )
 
     print(f"[i] Storing embeddings in {fname}")
-    
-    with open(osp.join("../data/pos_encodings", fname), 'wb') as f:
-      # make sure the pickle is not bound to any gpu, and store test acc with data
-      pickle.dump({"data": z.data.to(torch.device("cpu")), "acc": acc}, f)
 
+    with open(osp.join("../data/pos_encodings", fname), 'wb') as f:
+        # make sure the pickle is not bound to any gpu, and store test acc with data
+        pickle.dump({"data": z.data.to(torch.device("cpu")), "acc": acc}, f)
 
 
 if __name__ == "__main__":
-
-  parser = argparse.ArgumentParser()
-  parser.add_argument('--dataset', type=str, default='Cora',
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--dataset', type=str, default='Cora',
                         help='Cora, Citeseer, Pubmed, Computers, Photo, CoauthorCS, ogbn-arxiv')
-  parser.add_argument('--embedding_dim', type=int, default=128,
+    parser.add_argument('--embedding_dim', type=int, default=128,
                         help='Embedding dimension')
-  parser.add_argument('--walk_length', type=int, default=20, # note this can grow much bigger (paper: 40~100)
+    parser.add_argument('--walk_length', type=int, default=20,  # note this can grow much bigger (paper: 40~100)
                         help='Walk length')
-  parser.add_argument('--context_size', type=int, default=16,# paper shows increased perf until 16
+    parser.add_argument('--context_size', type=int, default=16,  # paper shows increased perf until 16
                         help='Context size')
-  parser.add_argument('--walks_per_node', type=int, default=16, # best paper results with 18
+    parser.add_argument('--walks_per_node', type=int, default=16,  # best paper results with 18
                         help='Walks per node')
-  parser.add_argument('--neg_pos_ratio', type=int, default=1, 
+    parser.add_argument('--neg_pos_ratio', type=int, default=1,
                         help='Number of negatives for each positive')
-  parser.add_argument('--epochs', type=int, default=100, 
+    parser.add_argument('--epochs', type=int, default=100,
                         help='Number of epochs')
-  parser.add_argument('--gpu', type=int, default=0, 
+    parser.add_argument('--gpu', type=int, default=0,
                         help='GPU id (default 0)')
-  parser.add_argument("--not_lcc", action="store_false", help="don't use the largest connected component")
+    parser.add_argument("--not_lcc", action="store_false", help="don't use the largest connected component")
 
-
-  args = parser.parse_args()
-  opt = vars(args)
-  opt['rewiring'] = None
-  main(opt)
+    args = parser.parse_args()
+    opt = vars(args)
+    opt['rewiring'] = None
+    main(opt)

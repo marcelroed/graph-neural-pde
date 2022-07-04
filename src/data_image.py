@@ -11,114 +11,115 @@ import torchvision.transforms as transforms
 import scipy.sparse as sp
 import h5py
 
+
 def get_image_opt(opt):
-  opt['im_dataset'] = 'MNIST'  #datasets = ['MNIST','CIFAR']
+    opt['im_dataset'] = 'MNIST'  # datasets = ['MNIST','CIFAR']
 
-  opt['input_dropout'] = 0.5
-  opt['dropout'] = 0
-  opt['optimizer'] = 'rmsprop'
-  opt['lr'] = 0.0047
-  opt['decay'] = 5e-4
-  opt['self_loop_weight'] = 0.555  #### 0?
-  opt['alpha'] = 0.918
-  opt['time'] = 12.1
-  opt['augment'] = False #True   #False need to view image
-  opt['attention_dropout'] = 0
-  opt['adjoint'] = False
+    opt['input_dropout'] = 0.5
+    opt['dropout'] = 0
+    opt['optimizer'] = 'rmsprop'
+    opt['lr'] = 0.0047
+    opt['decay'] = 5e-4
+    opt['self_loop_weight'] = 0.555  #### 0?
+    opt['alpha'] = 0.918
+    opt['time'] = 12.1
+    opt['augment'] = False  # True   #False need to view image
+    opt['attention_dropout'] = 0
+    opt['adjoint'] = False
 
-  opt['epoch'] = 4 #3 #10#20 #400
-  opt['batch_size'] = 64 #64  # doing batch size for mnist
-  opt['train_size'] = 512 #128#512 #4096 #2048 #512 #2047:#4095:#511:#5119:#1279:#
-  opt['test_size'] = 64 #2559:#1279:
-  assert (opt['train_size']) % opt['batch_size'] == 0, "train_size needs to be multiple of batch_size"
-  assert (opt['test_size']) % opt['batch_size'] == 0, "test_size needs to be multiple of batch_size"
+    opt['epoch'] = 4  # 3 #10#20 #400
+    opt['batch_size'] = 64  # 64  # doing batch size for mnist
+    opt['train_size'] = 512  # 128#512 #4096 #2048 #512 #2047:#4095:#511:#5119:#1279:#
+    opt['test_size'] = 64  # 2559:#1279:
+    assert (opt['train_size']) % opt['batch_size'] == 0, "train_size needs to be multiple of batch_size"
+    assert (opt['test_size']) % opt['batch_size'] == 0, "test_size needs to be multiple of batch_size"
+
+    if opt['im_dataset'] == 'MNIST':
+        opt['im_width'] = 28
+        opt['im_height'] = 28
+        opt['im_chan'] = 1
+        opt['hidden_dim'] = 1  # 16    #### 1 or 3 rgb?
+        opt['num_feature'] = 1  # 1433   #### 1 or 3 rgb?
+        opt['num_class'] = 10  # 7  #### mnist digits
+
+    elif opt['im_dataset'] == 'CIFAR':
+        opt['im_width'] = 32
+        opt['im_height'] = 32
+        opt['im_chan'] = 3
+        # ????
+        opt['hidden_dim'] = 3  # 16    #### 1 or 3 rgb?
+        opt['num_feature'] = 3  # 1433   #### 1 or 3 rgb?
+        opt['num_class'] = 10  # 7  #### mnist digits
+
+    opt['num_nodes'] = opt['im_height'] * opt['im_width'] * opt['im_chan']  # 2708  ###pixels
+    opt['simple'] = False  # True
+    opt['diags'] = True
+    opt['ode'] = 'ode'  # 'att' don't think att is implmented properly on this codebase?
+    opt['linear_attention'] = True
+    opt['batched'] = True
+    return opt
 
 
-  if opt['im_dataset'] == 'MNIST':
-    opt['im_width'] = 28
-    opt['im_height'] = 28
-    opt['im_chan'] = 1
-    opt['hidden_dim'] = 1 #16    #### 1 or 3 rgb?
-    opt['num_feature'] = 1  # 1433   #### 1 or 3 rgb?
-    opt['num_class'] = 10  # 7  #### mnist digits
-
-  elif opt['im_dataset'] == 'CIFAR':
-    opt['im_width'] = 32
-    opt['im_height'] = 32
-    opt['im_chan'] = 3
-    # ????
-    opt['hidden_dim'] = 3 #16    #### 1 or 3 rgb?
-    opt['num_feature'] = 3  # 1433   #### 1 or 3 rgb?
-    opt['num_class'] = 10  # 7  #### mnist digits
-
-  opt['num_nodes'] = opt['im_height'] * opt['im_width'] * opt['im_chan'] #2708  ###pixels
-  opt['simple'] = False #True
-  opt['diags'] = True
-  opt['ode'] = 'ode' #'att' don't think att is implmented properly on this codebase?
-  opt['linear_attention'] = True
-  opt['batched'] = True
-  return opt
-
-
-def edge_index_calc(im_height, im_width, im_chan, diags = False):
+def edge_index_calc(im_height, im_width, im_chan, diags=False):
     edge_list = []
+
     def oneD():
         for i in range(im_height * im_width):
-            #corners
-            if i in [0, im_width-1, im_height * im_width - im_width, im_height * im_width - 1]:
-                if i  == 0:
-                    edge_list.append([i,1])
-                    edge_list.append([i,im_width])
-                    edge_list.append([i,im_width + 1]) if diags == True else 0
+            # corners
+            if i in [0, im_width - 1, im_height * im_width - im_width, im_height * im_width - 1]:
+                if i == 0:
+                    edge_list.append([i, 1])
+                    edge_list.append([i, im_width])
+                    edge_list.append([i, im_width + 1]) if diags == True else 0
                 elif i == im_width - 1:
                     edge_list.append([i, im_width - 2])
                     edge_list.append([i, 2 * im_width - 1])
                     edge_list.append([i, 2 * im_width - 2]) if diags == True else 0
                 elif i == im_height * im_width - im_width:
-                    edge_list.append([i, im_height * im_width - 2*im_width])
-                    edge_list.append([i, im_height * im_width - im_width+1])
-                    edge_list.append([i, im_height * im_width - 2*im_width+1]) if diags == True else 0
+                    edge_list.append([i, im_height * im_width - 2 * im_width])
+                    edge_list.append([i, im_height * im_width - im_width + 1])
+                    edge_list.append([i, im_height * im_width - 2 * im_width + 1]) if diags == True else 0
                 elif i == im_height * im_width - 1:
                     edge_list.append([i, im_height * im_width - 2])
                     edge_list.append([i, im_height * im_width - 1 - im_width])
                     edge_list.append([i, im_height * im_width - im_width - 2]) if diags == True else 0
             # top edge
-            elif i in range(1,im_width-1):
-                edge_list.append([i,i-1])
-                edge_list.append([i,i+1])
-                edge_list.append([i,i+im_width])
+            elif i in range(1, im_width - 1):
+                edge_list.append([i, i - 1])
+                edge_list.append([i, i + 1])
+                edge_list.append([i, i + im_width])
                 if diags:
-                    edge_list.append([i, i + im_width -1])
+                    edge_list.append([i, i + im_width - 1])
                     edge_list.append([i, i + im_width + 1])
             # bottom edge
             elif i in range(im_height * im_width - im_width, im_height * im_width):
-                edge_list.append([i,i-1])
-                edge_list.append([i,i+1])
-                edge_list.append([i,i-im_width])
+                edge_list.append([i, i - 1])
+                edge_list.append([i, i + 1])
+                edge_list.append([i, i - im_width])
                 if diags:
-                    edge_list.append([i, i - im_width -1])
+                    edge_list.append([i, i - im_width - 1])
                     edge_list.append([i, i - im_width + 1])
             # middle
             else:
-                if i % im_width == 0: # left edge
-                    edge_list.append([i,i+1])
-                    edge_list.append([i,i-im_width])
-                    edge_list.append([i,i+im_width])
+                if i % im_width == 0:  # left edge
+                    edge_list.append([i, i + 1])
+                    edge_list.append([i, i - im_width])
+                    edge_list.append([i, i + im_width])
                     if diags:
                         edge_list.append([i, i - im_width + 1])
                         edge_list.append([i, i + im_width + 1])
-                elif (i + 1) % im_width == 0: # right edge
-                    edge_list.append([i,i-1])
-                    edge_list.append([i,i-im_width])
-                    edge_list.append([i,i+im_width])
+                elif (i + 1) % im_width == 0:  # right edge
+                    edge_list.append([i, i - 1])
+                    edge_list.append([i, i - im_width])
+                    edge_list.append([i, i + im_width])
                     if diags:
                         edge_list.append([i, i - im_width - 1])
                         edge_list.append([i, i + im_width - 1])
                 else:
-                    edge_list.append([i,i-1])
-                    edge_list.append([i,i+1])
-                    edge_list.append([i,i-im_width])
-                    edge_list.append([i,i+im_width])
+                    edge_list.append([i, i - 1])
+                    edge_list.append([i, i + 1])
+                    edge_list.append([i, i - im_width])
+                    edge_list.append([i, i + im_width])
                     if diags:
                         edge_list.append([i, i - im_width - 1])
                         edge_list.append([i, i - im_width + 1])
@@ -129,7 +130,7 @@ def edge_index_calc(im_height, im_width, im_chan, diags = False):
     edge_list = oneD()
     ret_edge_tensor = torch.tensor(edge_list).T
 
-    #this is wrong need to put colour channels as featurs not extra nodes, saving code in case come back to
+    # this is wrong need to put colour channels as featurs not extra nodes, saving code in case come back to
     # if im_chan == 1:
     #     edge_list = oneD()
     #     ret_edge_tensor = torch.tensor(edge_list).T
@@ -142,17 +143,18 @@ def edge_index_calc(im_height, im_width, im_chan, diags = False):
     #         edge_list_3D.append(chan_edge_tensor)
     #     ret_edge_tensor = torch.cat(edge_list_3D,dim=1)
     if diags:
-        assert ret_edge_tensor.shape[1] == (8*(im_width-2)*(im_height-2)\
-                                    + 2*5*(im_width-2) + 2*5*(im_height-2)\
-                                    + 4*3) ,"Wrong number of fixed grid edges (inc diags)"
+        assert ret_edge_tensor.shape[1] == (8 * (im_width - 2) * (im_height - 2) \
+                                            + 2 * 5 * (im_width - 2) + 2 * 5 * (im_height - 2) \
+                                            + 4 * 3), "Wrong number of fixed grid edges (inc diags)"
     else:
-        assert ret_edge_tensor.shape[1] == (4*(im_width-2)*(im_height-2) \
-                                    + 2*3*(im_width-2) + 2*3*(im_height-2)\
-                                    + 4*2) ,"Wrong number of fixed grid edges (exc diags)"
+        assert ret_edge_tensor.shape[1] == (4 * (im_width - 2) * (im_height - 2) \
+                                            + 2 * 3 * (im_width - 2) + 2 * 3 * (im_height - 2) \
+                                            + 4 * 2), "Wrong number of fixed grid edges (exc diags)"
     return ret_edge_tensor
 
 
-def create_in_memory_dataset(opt, type, data_loader, edge_index, im_height, im_width, im_chan, root, processed_file_name=None):
+def create_in_memory_dataset(opt, type, data_loader, edge_index, im_height, im_width, im_chan, root,
+                             processed_file_name=None):
     class IMAGE_IN_MEM(InMemoryDataset):
         def __init__(self, root, transform=None, pre_transform=None, pre_filter=None):
             super(IMAGE_IN_MEM, self).__init__(root, transform, pre_transform, pre_filter)
@@ -160,12 +162,14 @@ def create_in_memory_dataset(opt, type, data_loader, edge_index, im_height, im_w
 
         @property
         def raw_file_names(self):
-           return []
+            return []
+
         @property
         def processed_file_names(self):
             return [processed_file_name]
+
         def download(self):
-            pass #download_url(self.url, self.raw_dir)
+            pass  # download_url(self.url, self.raw_dir)
 
         # @property
         # def num_classes(self):
@@ -179,7 +183,7 @@ def create_in_memory_dataset(opt, type, data_loader, edge_index, im_height, im_w
                     if batch_idx > 0:
                         break
                     self.tensor = torch.tensor(opt['num_class'] - 1)
-                    y = self.tensor  #<- hack the datset num_classes property (code above)
+                    y = self.tensor  # <- hack the datset num_classes property (code above)
                 elif type == "Train":
                     if opt['testing_code'] == True and batch_idx > opt['train_size'] - 1:
                         break
@@ -188,7 +192,7 @@ def create_in_memory_dataset(opt, type, data_loader, edge_index, im_height, im_w
                     if opt['testing_code'] == True and batch_idx > opt['test_size'] - 1:
                         break
                     y = target
-                x = data.view(im_chan, im_width * im_height)#, -1)
+                x = data.view(im_chan, im_width * im_height)  # , -1)
                 x = x.T
 
                 graph = Data(x=x, y=y.unsqueeze(dim=0), edge_index=edge_index)
@@ -199,47 +203,57 @@ def create_in_memory_dataset(opt, type, data_loader, edge_index, im_height, im_w
 
     return IMAGE_IN_MEM(root)
 
+
 def load_data(opt):
-  im_height = opt['im_height']
-  im_width = opt['im_width']
-  im_chan = opt['im_chan']
-  exdataset = opt['im_dataset']
+    im_height = opt['im_height']
+    im_width = opt['im_width']
+    im_chan = opt['im_chan']
+    exdataset = opt['im_dataset']
 
-  if opt['im_dataset'] == 'MNIST':
-    transform = transforms.Compose([transforms.ToTensor(),
-                                    transforms.Normalize((0.1307,), (0.3081,))])
-    data_train = torchvision.datasets.MNIST('../data/'+exdataset + '/', train=True, download=True,
-                                            transform=transform)
-    data_test = torchvision.datasets.MNIST('../data/'+exdataset+'/', train=False, download=True,
-                                           transform=transform)
-  elif opt['im_dataset'] == 'CIFAR':
-    transform = transforms.Compose([transforms.ToTensor(),
-                                    transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
-    data_train = torchvision.datasets.CIFAR10('../data/' + exdataset + '/', train=True, download=True,
-                                            transform=transform)
-    data_test = torchvision.datasets.CIFAR10('../data/' + exdataset + '/', train=False, download=True,
-                                           transform=transform)
+    if opt['im_dataset'] == 'MNIST':
+        transform = transforms.Compose([transforms.ToTensor(),
+                                        transforms.Normalize((0.1307,), (0.3081,))])
+        data_train = torchvision.datasets.MNIST('../data/' + exdataset + '/', train=True, download=True,
+                                                transform=transform)
+        data_test = torchvision.datasets.MNIST('../data/' + exdataset + '/', train=False, download=True,
+                                               transform=transform)
+    elif opt['im_dataset'] == 'CIFAR':
+        transform = transforms.Compose([transforms.ToTensor(),
+                                        transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
+        data_train = torchvision.datasets.CIFAR10('../data/' + exdataset + '/', train=True, download=True,
+                                                  transform=transform)
+        data_test = torchvision.datasets.CIFAR10('../data/' + exdataset + '/', train=False, download=True,
+                                                 transform=transform)
 
-  train_loader = torch.utils.data.DataLoader(data_train, batch_size=1, shuffle=True)
-  test_loader = torch.utils.data.DataLoader(data_test, batch_size=1, shuffle=True)
+    train_loader = torch.utils.data.DataLoader(data_train, batch_size=1, shuffle=True)
+    test_loader = torch.utils.data.DataLoader(data_test, batch_size=1, shuffle=True)
 
-  edge_index = edge_index_calc(im_height, im_width, im_chan, diags=opt['diags'])
-  print("creating in_memory_datasets")
-  if opt['testing_code'] == True:
-      Graph_GNN = create_in_memory_dataset(opt, "GNN", train_loader, edge_index, im_height, im_width, im_chan,
-                                             root='../data/PyG'+exdataset+'GNN/', processed_file_name='Graph'+exdataset+'GNN.pt')
-      Graph_train = create_in_memory_dataset(opt, "Train", train_loader, edge_index, im_height, im_width, im_chan,
-                                             root='../data/PyG'+exdataset+ str(opt['train_size'])+'Train/', processed_file_name='Graph'+exdataset+str(opt['train_size']) +'Train.pt')
-      Graph_test = create_in_memory_dataset(opt, "Test", test_loader, edge_index, im_height, im_width, im_chan,
-                                             root='../data/PyG'+exdataset+ str(opt['test_size'])+'Test/', processed_file_name='Graph'+exdataset+str(opt['test_size']) +'Test.pt')
-  else:
-      Graph_GNN = create_in_memory_dataset(opt, "GNN", train_loader, edge_index, im_height, im_width, im_chan,
-                                             root='../data/PyG'+exdataset+'GNN/', processed_file_name='PyG'+exdataset+'GNN.pt')
-      Graph_train = create_in_memory_dataset(opt, "Train", train_loader, edge_index, im_height, im_width, im_chan,
-                                             root='../data/PyG'+exdataset+'Train/', processed_file_name='PyG'+exdataset+'Train.pt')
-      Graph_test = create_in_memory_dataset(opt, "Test", test_loader, edge_index, im_height, im_width, im_chan,
-                                             root='../data/PyG'+exdataset+'Test/', processed_file_name='PyG'+exdataset+'Test.pt')
-  return Graph_GNN, Graph_train, Graph_test
+    edge_index = edge_index_calc(im_height, im_width, im_chan, diags=opt['diags'])
+    print("creating in_memory_datasets")
+    if opt['testing_code'] == True:
+        Graph_GNN = create_in_memory_dataset(opt, "GNN", train_loader, edge_index, im_height, im_width, im_chan,
+                                             root='../data/PyG' + exdataset + 'GNN/',
+                                             processed_file_name='Graph' + exdataset + 'GNN.pt')
+        Graph_train = create_in_memory_dataset(opt, "Train", train_loader, edge_index, im_height, im_width, im_chan,
+                                               root='../data/PyG' + exdataset + str(opt['train_size']) + 'Train/',
+                                               processed_file_name='Graph' + exdataset + str(
+                                                   opt['train_size']) + 'Train.pt')
+        Graph_test = create_in_memory_dataset(opt, "Test", test_loader, edge_index, im_height, im_width, im_chan,
+                                              root='../data/PyG' + exdataset + str(opt['test_size']) + 'Test/',
+                                              processed_file_name='Graph' + exdataset + str(
+                                                  opt['test_size']) + 'Test.pt')
+    else:
+        Graph_GNN = create_in_memory_dataset(opt, "GNN", train_loader, edge_index, im_height, im_width, im_chan,
+                                             root='../data/PyG' + exdataset + 'GNN/',
+                                             processed_file_name='PyG' + exdataset + 'GNN.pt')
+        Graph_train = create_in_memory_dataset(opt, "Train", train_loader, edge_index, im_height, im_width, im_chan,
+                                               root='../data/PyG' + exdataset + 'Train/',
+                                               processed_file_name='PyG' + exdataset + 'Train.pt')
+        Graph_test = create_in_memory_dataset(opt, "Test", test_loader, edge_index, im_height, im_width, im_chan,
+                                              root='../data/PyG' + exdataset + 'Test/',
+                                              processed_file_name='PyG' + exdataset + 'Test.pt')
+    return Graph_GNN, Graph_train, Graph_test
+
 
 # from SuperPixData import load_matlab_file, stack_matrices
 def create_Superpix75(opt, type, root, processed_file_name=None):
@@ -247,14 +261,17 @@ def create_Superpix75(opt, type, root, processed_file_name=None):
         def __init__(self, root, transform=None, pre_transform=None, pre_filter=None):
             super(IMAGE_IN_MEM, self).__init__(root, transform, pre_transform, pre_filter)
             self.data, self.slices = torch.load(self.processed_paths[0])
+
         @property
         def raw_file_names(self):
-           return []
+            return []
+
         @property
         def processed_file_names(self):
             return [processed_file_name]
+
         def download(self):
-            pass #download_url(self.url, self.raw_dir)
+            pass  # download_url(self.url, self.raw_dir)
 
         def load_labels(self, fname):
             tmp = load_matlab_file(fname, 'labels')
@@ -268,12 +285,15 @@ def create_Superpix75(opt, type, root, processed_file_name=None):
             path_main = '../data/SuperMNIST/MNIST/'
 
             if type == "GNN":
-                y = torch.tensor(opt['num_class']-1)
+                y = torch.tensor(opt['num_class'] - 1)
             elif type == "Train":
-                path_train_vals = os.path.join(path_main,'datasets/mnist_superpixels_data_%d/train_vals.mat' % n_supPix)
-                path_coords_train = os.path.join(path_main,'datasets/mnist_superpixels_data_%d/train_patch_coords.mat' % n_supPix)
+                path_train_vals = os.path.join(path_main,
+                                               'datasets/mnist_superpixels_data_%d/train_vals.mat' % n_supPix)
+                path_coords_train = os.path.join(path_main,
+                                                 'datasets/mnist_superpixels_data_%d/train_patch_coords.mat' % n_supPix)
                 path_train_labels = os.path.join(path_main, 'datasets/MNIST_preproc_train_labels/MNIST_labels.mat')
-                path_train_centroids = os.path.join(path_main,'datasets/mnist_superpixels_data_%d/train_centroids.mat' % n_supPix)
+                path_train_centroids = os.path.join(path_main,
+                                                    'datasets/mnist_superpixels_data_%d/train_centroids.mat' % n_supPix)
 
                 vals_train = load_matlab_file(path_train_vals, 'vals')
                 tmp = load_matlab_file(path_coords_train, 'patch_coords')
@@ -288,19 +308,21 @@ def create_Superpix75(opt, type, root, processed_file_name=None):
                 train_labels = self.load_labels(path_train_labels)
                 batch_size = opt['batch_size']
                 for i in range(opt['train_size'] // batch_size):
-                    x = vals_train[i*batch_size:(i+1)*batch_size+1,:]
+                    x = vals_train[i * batch_size:(i + 1) * batch_size + 1, :]
                     y = train_labels[i]
                     pos = coords_train
 
-                    edge_index , edge_attr = dense_to_sparse(adj_mat_train[i,:,:].squeeze())
+                    edge_index, edge_attr = dense_to_sparse(adj_mat_train[i, :, :].squeeze())
 
                     graph_list.append(Data(x=x, edge_index=edge_index, edge_attr=edge_attr, y=y, pos=pos))
 
             elif type == "Test":
-                path_test_vals = os.path.join(path_main,'datasets/mnist_superpixels_data_%d/test_vals.mat' % n_supPix),
-                path_coords_test = os.path.join(path_main,'datasets/mnist_superpixels_data_%d/test_patch_coords.mat' % n_supPix),
+                path_test_vals = os.path.join(path_main, 'datasets/mnist_superpixels_data_%d/test_vals.mat' % n_supPix),
+                path_coords_test = os.path.join(path_main,
+                                                'datasets/mnist_superpixels_data_%d/test_patch_coords.mat' % n_supPix),
                 path_test_labels = os.path.join(path_main, 'datasets/MNIST_preproc_test_labels/MNIST_labels.mat'),
-                path_test_centroids = os.path.join(path_main,'datasets/mnist_superpixels_data_%d/test_centroids.mat' % n_supPix)
+                path_test_centroids = os.path.join(path_main,
+                                                   'datasets/mnist_superpixels_data_%d/test_centroids.mat' % n_supPix)
 
                 vals_test = load_matlab_file(path_test_vals, 'vals')
                 tmp = load_matlab_file(path_coords_test, 'patch_coords')
@@ -314,14 +336,13 @@ def create_Superpix75(opt, type, root, processed_file_name=None):
 
                 test_labels = self.load_labels(path_test_labels)
 
-
             self.data, self.slices = self.collate(graph_list)
             torch.save((self.data, self.slices), self.processed_paths[0])
+
     return IMAGE_IN_MEM(root)
 
 
-
-def load_Superpix75Mat(opt): #, path='../data/SuperMNIST/MNIST/datasets/mnist_superpixels_data_75/'):
+def load_Superpix75Mat(opt):  # , path='../data/SuperMNIST/MNIST/datasets/mnist_superpixels_data_75/'):
 
     # 'path_train_vals' : os.path.join(path_main, 'datasets/mnist_superpixels_data_%d/train_vals.mat' % n_supPix),
     # 'path_coords_train' : os.path.join(path_main, 'datasets/mnist_superpixels_data_%d/train_patch_coords.mat' % n_supPix),
@@ -339,19 +360,22 @@ def load_Superpix75Mat(opt): #, path='../data/SuperMNIST/MNIST/datasets/mnist_su
     #             root='../data/SuperPix75'+'_'+type+'/', processed_file_name='GraphSuperPix75'+type+'.pt')
     type = "Train"
     Graph_train = create_Superpix75(opt, type,
-                root='../data/SuperPix75'+ str(opt['train_size']) +type+'/', processed_file_name='GraphSuperPix75'+ str(opt['train_size'])+type+'.pt')
+                                    root='../data/SuperPix75' + str(opt['train_size']) + type + '/',
+                                    processed_file_name='GraphSuperPix75' + str(opt['train_size']) + type + '.pt')
     type = "Test"
     Graph_test = create_Superpix75(opt, type,
-                root='../data/SuperPix75'+ str(opt['test_size']) +type+'/', processed_file_name='GraphSuperPix75'+ str(opt['test_size'])+type+'.pt')
+                                   root='../data/SuperPix75' + str(opt['test_size']) + type + '/',
+                                   processed_file_name='GraphSuperPix75' + str(opt['test_size']) + type + '.pt')
 
     return Graph_GNN, Graph_train, Graph_test
 
 
 def imshow(img):
-    img = img / 2 + 0.5     # unnormalize
+    img = img / 2 + 0.5  # unnormalize
     npimg = img.numpy()
     plt.imshow(np.transpose(npimg, (1, 2, 0)))
     plt.show()
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -420,7 +444,6 @@ if __name__ == "__main__":
     opt = get_image_opt(opt)
 
     # load_Superpix75Mat(opt)
-
 
     # Cora = get_dataset('Cora', '../data', False)
     # gnn = GNN(self.opt, dataset, device=self.device)
