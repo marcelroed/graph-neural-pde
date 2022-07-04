@@ -9,6 +9,7 @@ from model_configurations import set_block, set_function
 class GNN(BaseGNN):
     """
     Basic GNN model.
+    To note: This verison of the GNN code is specific to GRAFF, and does not do message passing at all.
 
     Forward is comprised of three steps:
         1. forward_XN
