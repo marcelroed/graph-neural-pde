@@ -88,8 +88,8 @@ def average_test(models, datas):
 
 def train_ray_image(opt, checkpoint_dir=None, data_dir="../data", opt_val=True):
     # load data
-    pixel_data = load_pixel_data(opt) #training pixels are in data_train
-    print('data size: {}'.format(pixel_data.data.y.shape))#, data_test.data.y.shape))
+    pixel_data = load_pixel_data(opt)  # training pixels are in data_train
+    print('data size: {}'.format(pixel_data.data.y.shape))  # , data_test.data.y.shape))
     # load model
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     loader = DataLoader(pixel_data, batch_size=opt['batch_size'], shuffle=True)
@@ -101,7 +101,7 @@ def train_ray_image(opt, checkpoint_dir=None, data_dir="../data", opt_val=True):
     if edge_index_gpu is not None: edge_index_gpu.to(device)
     if edge_attr_gpu is not None: edge_index_gpu.to(device)
     model = GNN_image_pixel(opt, batch.num_features, batch.num_nodes, opt['num_class'], edge_index_gpu,
-                      batch.edge_attr, device).to(device)
+                            batch.edge_attr, device).to(device)
 
     if torch.cuda.device_count() > 1:
         model = nn.DataParallel(model)
@@ -159,7 +159,7 @@ def train_ray_int(opt, checkpoint_dir=None, data_dir="../data", opt_val=False):
         # need next line as it sets the attributes in the solver
 
         if opt["no_early"]:
-            _, val_acc_int, tmp_test_acc_int = pixel_test(model, data.data ,batchorTest="test")
+            _, val_acc_int, tmp_test_acc_int = pixel_test(model, data.data, batchorTest="test")
         else:
             _, _, _ = test(model, data)
             val_acc_int = model.odeblock.test_integrator.solver.best_val
@@ -176,12 +176,13 @@ def train_ray_int(opt, checkpoint_dir=None, data_dir="../data", opt_val=False):
 def set_MNIST_search_space(opt):
     opt['block'] = 'constant'
     opt['function'] = 'transformer'
-    opt["time"] = 16.0 #fixed for comparison tune.uniform(0.5, 20.0)
+    opt["time"] = 16.0  # fixed for comparison tune.uniform(0.5, 20.0)
     opt['self_loop_weight'] = 0  # 0.555
-    opt['self_loops'] = 0 #tune.choice([0, 1])
+    opt['self_loops'] = 0  # tune.choice([0, 1])
 
     opt['pixel_cat'] = 2  # 10 #10 #2 #[2 for binary_sigmoid, 10 for'10catM2','10catlogits' ]
-    opt['pixel_loss'] = 'binary_sigmoid'  # 10catlogits'#'binary_sigmoid' #'10catlogits' #  ['binary_sigmoid','10catM2','10catlogits','MSE']
+    opt[
+        'pixel_loss'] = 'binary_sigmoid'  # 10catlogits'#'binary_sigmoid' #'10catlogits' #  ['binary_sigmoid','10catM2','10catlogits','MSE']
     opt['simple'] = True
     opt['adjoint'] = True
     opt['method'] = 'rk4'
@@ -216,7 +217,7 @@ def set_MNIST_search_space(opt):
     opt["dropout"] = tune.uniform(0, 0.8)
     opt["optimizer"] = tune.choice(["adam", "adamax", "rmsprop"])
     if opt["block"] in {'attention', 'mixed'} or opt['function'] in {'GAT', 'transformer', 'dorsey'}:
-        opt["heads"] = tune.sample_from(lambda _: 2 **  np.random.randint(0, 3))
+        opt["heads"] = tune.sample_from(lambda _: 2 ** np.random.randint(0, 3))
         opt["attention_dim"] = tune.sample_from(lambda _: 2 ** np.random.randint(3, 6))
         opt['attention_norm_idx'] = tune.choice([0, 1])
 

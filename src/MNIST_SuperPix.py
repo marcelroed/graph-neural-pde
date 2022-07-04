@@ -36,11 +36,12 @@ def view_orig_image(SuperPixItem):
         plt.yticks([])
     plt.show()
 
+
 def view_SuperPix(SuperPixItem, opt):
     im_height = opt['im_height']
     im_width = opt['im_width']
     # RESIZING
-    SF = 448 #56 #480  # 480    #needed as mark_boundaries marks 1 pixel wide either side of boundary
+    SF = 448  # 56 #480  # 480    #needed as mark_boundaries marks 1 pixel wide either side of boundary
     heightSF = SF / im_height
     widthSF = SF / im_width
     pixel_values = SuperPixItem.orig_image.detach().numpy()
@@ -58,7 +59,7 @@ def view_SuperPix(SuperPixItem, opt):
 
     fig, ax = plt.subplots()
     # fig, (ax, cbar_ax) = plt.subplots(ncols=2, gridspec_kw={"width_ratios": [1, 0.05]})
-    ax.axis('off') #, cbar_ax.axis('off')
+    ax.axis('off')  # , cbar_ax.axis('off')
     ax.imshow(out)
     for i in range(num_centroids):
         ax.annotate(i, (r_x_coords[i], r_y_coords[i]), c="red")
@@ -86,302 +87,314 @@ def get_centroid_coords_array(num_centroids, centroids):
     x_coords = []
     y_coords = []
     for i in range(num_centroids):
-        x_coords.append(centroids[i][1]) #x is im_width is 1st axis
-        y_coords.append(centroids[i][0]) #y is im_height is 0th axis
+        x_coords.append(centroids[i][1])  # x is im_width is 1st axis
+        y_coords.append(centroids[i][0])  # y is im_height is 0th axis
     return x_coords, y_coords
 
 
 def transform_objects(im_height, im_width, ySF, xSF, pixel_values, pixel_labels, centroids):
-    #applying transform to various objects
-    resized_pixel_values = skimage.transform.resize(pixel_values, (im_height*ySF,im_width*xSF,3),
-                               mode='edge',
-                               anti_aliasing=False,
-                               anti_aliasing_sigma=None,
-                               preserve_range=True,
-                               order=0)
+    # applying transform to various objects
+    resized_pixel_values = skimage.transform.resize(pixel_values, (im_height * ySF, im_width * xSF, 3),
+                                                    mode='edge',
+                                                    anti_aliasing=False,
+                                                    anti_aliasing_sigma=None,
+                                                    preserve_range=True,
+                                                    order=0)
 
-    resized_pixel_labels = skimage.transform.resize(pixel_labels, (im_height*ySF,im_width*xSF),
-                               mode='edge',
-                               anti_aliasing=False,
-                               anti_aliasing_sigma=None,
-                               preserve_range=True,
-                               order=0)
-    resized_centroids = {key:((pos[0]+1/2)*xSF, (pos[1]+1/2)*ySF) for key, pos in centroids.items()}
-    #don't need to do the x/y reversal here as already performed
+    resized_pixel_labels = skimage.transform.resize(pixel_labels, (im_height * ySF, im_width * xSF),
+                                                    mode='edge',
+                                                    anti_aliasing=False,
+                                                    anti_aliasing_sigma=None,
+                                                    preserve_range=True,
+                                                    order=0)
+    resized_centroids = {key: ((pos[0] + 1 / 2) * xSF, (pos[1] + 1 / 2) * ySF) for key, pos in centroids.items()}
+    # don't need to do the x/y reversal here as already performed
 
     return resized_pixel_values, resized_pixel_labels, resized_centroids
 
 
 class InMemSuperPixelData(InMemoryDataset):
-  def __init__(self, root, name, opt, type, transform=None, pre_transform=None, pre_filter=None):
-    self.name = name
-    self.opt = opt
-    self.type = type
-    super(InMemoryDataset, self).__init__(root, transform, pre_transform, pre_filter)
-    self.data, self.slices = torch.load(self.processed_paths[0])
+    def __init__(self, root, name, opt, type, transform=None, pre_transform=None, pre_filter=None):
+        self.name = name
+        self.opt = opt
+        self.type = type
+        super(InMemoryDataset, self).__init__(root, transform, pre_transform, pre_filter)
+        self.data, self.slices = torch.load(self.processed_paths[0])
 
-  @property
-  def raw_dir(self):
-    return osp.join(self.root, self.name, 'raw')
+    @property
+    def raw_dir(self):
+        return osp.join(self.root, self.name, 'raw')
 
-  @property
-  def processed_dir(self):
-    return osp.join(self.root, self.name, 'processed')
+    @property
+    def processed_dir(self):
+        return osp.join(self.root, self.name, 'processed')
 
-  @property
-  def raw_file_names(self):
-    return []
+    @property
+    def raw_file_names(self):
+        return []
 
-  @property
-  def processed_file_names(self):
-    return 'data.pt'
+    @property
+    def processed_file_names(self):
+        return 'data.pt'
 
-  def download(self):
-    pass  # download_url(self.url, self.raw_dir)
+    def download(self):
+        pass  # download_url(self.url, self.raw_dir)
 
-  def read_data(self):
-    if self.opt['im_dataset'] == 'MNIST':
-      transform = transforms.Compose([transforms.ToTensor()])  # ,
-      # transforms.Normalize((0.1307,), (0.3081,))])
-      if self.type == "Train":
-        data = torchvision.datasets.MNIST('../data/MNIST/', train=True, download=True,
-                                          transform=transform)
-      elif self.type == 'Test':
-        data = torchvision.datasets.MNIST('../data/MNIST/', train=False, download=True,
-                                          transform=transform)
-    elif self.opt['im_dataset'] == 'CIFAR':
-      # https: // discuss.pytorch.org / t / normalization - in -the - mnist - example / 457 / 7
-      transform = transforms.Compose([transforms.ToTensor(),
-                                      transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
-      if self.type == "Train":
-        data = torchvision.datasets.CIFAR10('../data/CIFAR/', train=True, download=True,
-                                            transform=transform)
-      elif self.type == 'Test':
-        data = torchvision.datasets.CIFAR10('../data/CIFAR/', train=False, download=True,
-                                            transform=transform)
-    return data
+    def read_data(self):
+        if self.opt['im_dataset'] == 'MNIST':
+            transform = transforms.Compose([transforms.ToTensor()])  # ,
+            # transforms.Normalize((0.1307,), (0.3081,))])
+            if self.type == "Train":
+                data = torchvision.datasets.MNIST('../data/MNIST/', train=True, download=True,
+                                                  transform=transform)
+            elif self.type == 'Test':
+                data = torchvision.datasets.MNIST('../data/MNIST/', train=False, download=True,
+                                                  transform=transform)
+        elif self.opt['im_dataset'] == 'CIFAR':
+            # https: // discuss.pytorch.org / t / normalization - in -the - mnist - example / 457 / 7
+            transform = transforms.Compose([transforms.ToTensor(),
+                                            transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
+            if self.type == "Train":
+                data = torchvision.datasets.CIFAR10('../data/CIFAR/', train=True, download=True,
+                                                    transform=transform)
+            elif self.type == 'Test':
+                data = torchvision.datasets.CIFAR10('../data/CIFAR/', train=False, download=True,
+                                                    transform=transform)
+        return data
 
-  def calc_centroid_values(self, num_centroids, pixel_labels, pixel_values):
-      """for each centroid extract its value from its original pixel values"""
-      x = []
-      for c in range(num_centroids):
-          centroid_value = pixel_values[np.ix_(np.where(pixel_labels == c)[0], np.where(pixel_labels == c)[1])]
+    def calc_centroid_values(self, num_centroids, pixel_labels, pixel_values):
+        """for each centroid extract its value from its original pixel values"""
+        x = []
+        for c in range(num_centroids):
+            centroid_value = pixel_values[np.ix_(np.where(pixel_labels == c)[0], np.where(pixel_labels == c)[1])]
 
-          #todo problem here with ix_ on torch tensor
-          x.append(torch.mean(centroid_value))
-          # x.append(np.amax(centroid_value, axis=(0, 1)))
+            # todo problem here with ix_ on torch tensor
+            x.append(torch.mean(centroid_value))
+            # x.append(np.amax(centroid_value, axis=(0, 1)))
 
-      return np.array(x)
+        return np.array(x)
 
-  def calc_centroids(self, pixel_labels, num_centroids):
-      centroids = {}
-      for i in range(num_centroids):
-          indices = np.where(pixel_labels == i)
-          pixel_labels[pixel_labels == i]
-          x_av = np.mean(indices[1])  # x is im_width is 1st axis
-          y_av = np.mean(indices[0])  # y is im_height is 0th axis
-          centroids[i] = (x_av, y_av)
-      return centroids
+    def calc_centroids(self, pixel_labels, num_centroids):
+        centroids = {}
+        for i in range(num_centroids):
+            indices = np.where(pixel_labels == i)
+            pixel_labels[pixel_labels == i]
+            x_av = np.mean(indices[1])  # x is im_width is 1st axis
+            y_av = np.mean(indices[0])  # y is im_height is 0th axis
+            centroids[i] = (x_av, y_av)
+        return centroids
 
-  def find_neighbours(self, labels, boundaries, im_height, im_width):
-      """return a dictionary of centroid neighbours {centroid:{neighbours}}"""
-      neighbour_dict = {}
-      for i in range(im_height):
-          for j in range(im_width):
-              pix = i * im_width + j
-              if boundaries[i][j] == 1:
-                  neighbours = np.array([pix - im_width, pix - 1, pix + 1, pix + im_width])
-                  neighbours = neighbours[neighbours > 0]
-                  neighbours = neighbours[neighbours < im_height * im_width]
-                  neighbours = neighbours[
-                      np.logical_or(neighbours // im_width == pix // im_width, neighbours % im_width == pix % im_width)]
-                  for n in neighbours:
-                      if labels[pix // im_width][pix % im_width] in neighbour_dict:
-                          temp_set = neighbour_dict[labels[pix // im_width][pix % im_width]]
-                          temp_set.add(labels[n // im_width][n % im_width])
-                          neighbour_dict[labels[pix // im_width][pix % im_width]] = temp_set
-                      else:
-                          neighbour_dict[labels[pix // im_width][pix % im_width]] = {
-                              labels[n // im_width][n % im_width]}
-      return neighbour_dict
+    def find_neighbours(self, labels, boundaries, im_height, im_width):
+        """return a dictionary of centroid neighbours {centroid:{neighbours}}"""
+        neighbour_dict = {}
+        for i in range(im_height):
+            for j in range(im_width):
+                pix = i * im_width + j
+                if boundaries[i][j] == 1:
+                    neighbours = np.array([pix - im_width, pix - 1, pix + 1, pix + im_width])
+                    neighbours = neighbours[neighbours > 0]
+                    neighbours = neighbours[neighbours < im_height * im_width]
+                    neighbours = neighbours[
+                        np.logical_or(neighbours // im_width == pix // im_width,
+                                      neighbours % im_width == pix % im_width)]
+                    for n in neighbours:
+                        if labels[pix // im_width][pix % im_width] in neighbour_dict:
+                            temp_set = neighbour_dict[labels[pix // im_width][pix % im_width]]
+                            temp_set.add(labels[n // im_width][n % im_width])
+                            neighbour_dict[labels[pix // im_width][pix % im_width]] = temp_set
+                        else:
+                            neighbour_dict[labels[pix // im_width][pix % im_width]] = {
+                                labels[n // im_width][n % im_width]}
+        return neighbour_dict
 
-  def create_edge_index_from_neighbours(self, neighbour_dict, opt):
-      edge_index = [[], []]
-      for src, neighbours in neighbour_dict.items():
-          if opt['self_loop_weight'] == 0.0:
-              neighbours_temp = neighbours.copy()
-              neighbours_temp.remove(src)
-              edge_index[0].extend([src] * len(neighbours_temp))
-              edge_index[1].extend(list(neighbours_temp))
-          else:
-              edge_index[0].extend([src] * len(neighbours))
-              edge_index[1].extend(list(neighbours))
-      return torch.tensor(edge_index, dtype=int)
+    def create_edge_index_from_neighbours(self, neighbour_dict, opt):
+        edge_index = [[], []]
+        for src, neighbours in neighbour_dict.items():
+            if opt['self_loop_weight'] == 0.0:
+                neighbours_temp = neighbours.copy()
+                neighbours_temp.remove(src)
+                edge_index[0].extend([src] * len(neighbours_temp))
+                edge_index[1].extend(list(neighbours_temp))
+            else:
+                edge_index[0].extend([src] * len(neighbours))
+                edge_index[1].extend(list(neighbours))
+        return torch.tensor(edge_index, dtype=int)
 
-  def process(self):
-    graph_list = []
-    data = self.read_data()
-    c, w, h = self.opt['im_chan'], self.opt['im_width'], self.opt['im_height']
+    def process(self):
+        graph_list = []
+        data = self.read_data()
+        c, w, h = self.opt['im_chan'], self.opt['im_width'], self.opt['im_height']
 
-    data_loader = torch.utils.data.DataLoader(data, batch_size=1, shuffle=True)
-    for batch_idx, (data, target) in enumerate(data_loader):
-      if self.opt['testing_code'] == True and batch_idx > self.opt['train_size'] - 1:
-        break
-      pixel_values = data.squeeze()
-      multichannel = c > 1
-      #need this scaling for SLIC to work
-      img  = pixel_values.numpy()
-      img = img - img.min()
-      img = img / img.max() * 255.0
-      img = img.astype(np.double)
-      # pixel_labels = slic(img, n_segments=75, multichannel=multichannel)
-      compactness = 200.0 #default 10 bigger makes more square
-      pixel_labels = slic(img, n_segments=60, compactness=compactness, multichannel=multichannel)
-      num_centroids = np.max(pixel_labels) + 1  # required to add 1 for full coverage
-      centroids = self.calc_centroids(pixel_labels, num_centroids)
-      centroid_coords = torch.tensor([centroids[i] for i in range(num_centroids)])
-      centroid_values = torch.tensor(self.calc_centroid_values(num_centroids, pixel_labels, pixel_values=pixel_values))
-      centroid_labels = torch.tensor(np.maximum(np.minimum(centroid_values * self.opt['pixel_cat'] ,self.opt['pixel_cat']*(0.9999)), 0))
-      centroid_labels = torch.floor(centroid_labels).type(torch.LongTensor)
-      boundaries = skimage.segmentation.find_boundaries(pixel_labels, mode='inner', background=-1).astype(np.uint8)
-      neighbour_dict = self.find_neighbours(pixel_labels, boundaries, im_height=h, im_width=w)
-      edge_index = self.create_edge_index_from_neighbours(neighbour_dict, self.opt)
+        data_loader = torch.utils.data.DataLoader(data, batch_size=1, shuffle=True)
+        for batch_idx, (data, target) in enumerate(data_loader):
+            if self.opt['testing_code'] == True and batch_idx > self.opt['train_size'] - 1:
+                break
+            pixel_values = data.squeeze()
+            multichannel = c > 1
+            # need this scaling for SLIC to work
+            img = pixel_values.numpy()
+            img = img - img.min()
+            img = img / img.max() * 255.0
+            img = img.astype(np.double)
+            # pixel_labels = slic(img, n_segments=75, multichannel=multichannel)
+            compactness = 200.0  # default 10 bigger makes more square
+            pixel_labels = slic(img, n_segments=60, compactness=compactness, multichannel=multichannel)
+            num_centroids = np.max(pixel_labels) + 1  # required to add 1 for full coverage
+            centroids = self.calc_centroids(pixel_labels, num_centroids)
+            centroid_coords = torch.tensor([centroids[i] for i in range(num_centroids)])
+            centroid_values = torch.tensor(
+                self.calc_centroid_values(num_centroids, pixel_labels, pixel_values=pixel_values))
+            centroid_labels = torch.tensor(
+                np.maximum(np.minimum(centroid_values * self.opt['pixel_cat'], self.opt['pixel_cat'] * (0.9999)), 0))
+            centroid_labels = torch.floor(centroid_labels).type(torch.LongTensor)
+            boundaries = skimage.segmentation.find_boundaries(pixel_labels, mode='inner', background=-1).astype(
+                np.uint8)
+            neighbour_dict = self.find_neighbours(pixel_labels, boundaries, im_height=h, im_width=w)
+            edge_index = self.create_edge_index_from_neighbours(neighbour_dict, self.opt)
 
+            # set pixel masks
+            full_idx = list(centroids.keys())
+            rnd_state = np.random.RandomState(seed=12345)
+            train_idx = []
+            for label in range(centroid_labels.max().item() + 1):
+                class_idx = (centroid_labels == label).nonzero()[:, 0]
+                num_in_class = len(class_idx)
+                # train_idx.extend(rnd_state.choice(class_idx, num_in_class//2, replace=False))
+                train_idx.extend(rnd_state.choice(class_idx, min(num_in_class // 2, 8), replace=False))
 
-      # set pixel masks
-      full_idx = list(centroids.keys())
-      rnd_state = np.random.RandomState(seed=12345)
-      train_idx = []
-      for label in range(centroid_labels.max().item() + 1):
-        class_idx = (centroid_labels == label).nonzero()[:,0]
-        num_in_class = len(class_idx)
-        # train_idx.extend(rnd_state.choice(class_idx, num_in_class//2, replace=False))
-        train_idx.extend(rnd_state.choice(class_idx, min(num_in_class//2,8), replace=False))
+            test_idx = [i for i in full_idx if i not in train_idx]
+            train_mask = torch.zeros(num_centroids, dtype=torch.bool)
+            test_mask = torch.zeros(num_centroids, dtype=torch.bool)
+            train_mask[train_idx] = 1
+            test_mask[test_idx] = 1
+            pixel_labels = torch.tensor(pixel_labels).view(-1)
 
-      test_idx = [i for i in full_idx if i not in train_idx]
-      train_mask = torch.zeros(num_centroids, dtype=torch.bool)
-      test_mask = torch.zeros(num_centroids, dtype=torch.bool)
-      train_mask[train_idx] = 1
-      test_mask[test_idx] = 1
-      pixel_labels = torch.tensor(pixel_labels).view(-1)
+            graph = Data(x=centroid_values.unsqueeze(1), edge_index=edge_index,
+                         y=centroid_labels,
+                         orig_image=pixel_values, pixel_labels=pixel_labels,
+                         pos=centroid_coords, centroids=centroids,
+                         train_mask=train_mask, test_mask=test_mask, target=target)
+            graph_list.append(graph)
 
-      graph = Data(x=centroid_values.unsqueeze(1), edge_index=edge_index,
-                   y=centroid_labels,
-                   orig_image=pixel_values, pixel_labels=pixel_labels,
-                   pos=centroid_coords, centroids=centroids,
-                   train_mask= train_mask, test_mask=test_mask, target=target)
-      graph_list.append(graph)
-
-    torch.save(self.collate(graph_list), self.processed_paths[0])
+        torch.save(self.collate(graph_list), self.processed_paths[0])
 
 
 def load_SuperPixel_data(opt):
-  print("loading PyG Super Pixel Data")
-  data_name = opt['im_dataset']
-  root = '../data'
-  if opt['self_loop_weight'] == 0.0:
-      name = f"SuperPixel{data_name}{str(opt['train_size'])}_{str(opt['pixel_cat'])}Cat_NoSL"
-  else:
-      name = f"SuperPixel{data_name}{str(opt['train_size'])}_{str(opt['pixel_cat'])}Cat"
-  root = f"{root}/{name}"
-  SuperPixelData = InMemSuperPixelData(root, name, opt, type="Train", transform=None, pre_transform=None, pre_filter=None)
-  return SuperPixelData
+    print("loading PyG Super Pixel Data")
+    data_name = opt['im_dataset']
+    root = '../data'
+    if opt['self_loop_weight'] == 0.0:
+        name = f"SuperPixel{data_name}{str(opt['train_size'])}_{str(opt['pixel_cat'])}Cat_NoSL"
+    else:
+        name = f"SuperPixel{data_name}{str(opt['train_size'])}_{str(opt['pixel_cat'])}Cat"
+    root = f"{root}/{name}"
+    SuperPixelData = InMemSuperPixelData(root, name, opt, type="Train", transform=None, pre_transform=None,
+                                         pre_filter=None)
+    return SuperPixelData
+
 
 def train(model, optimizer, dataset, data_test=None):
-  model.train()
-  loader = DataLoader(dataset, batch_size=model.opt['batch_size'], shuffle=True)
-  loss_path = []
-  train_acc_path = []
-  test_acc_path = []
+    model.train()
+    loader = DataLoader(dataset, batch_size=model.opt['batch_size'], shuffle=True)
+    loss_path = []
+    train_acc_path = []
+    test_acc_path = []
 
-  for batch_idx, batch in enumerate(loader):
-    optimizer.zero_grad()
-    start_time = time.time()
-    if batch_idx > model.opt['train_size'] // model.opt['batch_size']:  # only do for train_size data points
-      break
-    #TODO can i do this mid training loop or does it break the backprop??
-    model.odeblock.odefunc.edge_index, model.odeblock.odefunc.edge_weight = get_rw_adj(batch.edge_index, edge_weight=None, norm_dim=1,
-                                                                   fill_value=model.opt['self_loop_weight'],
-                                                                   num_nodes=batch.num_nodes)
+    for batch_idx, batch in enumerate(loader):
+        optimizer.zero_grad()
+        start_time = time.time()
+        if batch_idx > model.opt['train_size'] // model.opt['batch_size']:  # only do for train_size data points
+            break
+        # TODO can i do this mid training loop or does it break the backprop??
+        model.odeblock.odefunc.edge_index, model.odeblock.odefunc.edge_weight = get_rw_adj(batch.edge_index,
+                                                                                           edge_weight=None, norm_dim=1,
+                                                                                           fill_value=model.opt[
+                                                                                               'self_loop_weight'],
+                                                                                           num_nodes=batch.num_nodes)
 
-    out = model(batch.x.to(model.device))
+        out = model(batch.x.to(model.device))
 
-    if model.opt['pixel_loss'] in ['binary_sigmoid', '10catlogits', '10catM2','10catkmeans']:
-      lf = torch.nn.CrossEntropyLoss()
-    elif model.opt['pixel_loss'] == 'MSE':
-      lf = torch.nn.MSELoss()
+        if model.opt['pixel_loss'] in ['binary_sigmoid', '10catlogits', '10catM2', '10catkmeans']:
+            lf = torch.nn.CrossEntropyLoss()
+        elif model.opt['pixel_loss'] == 'MSE':
+            lf = torch.nn.MSELoss()
 
-    if model.opt['im_chan'] == 1:
-      loss = lf(out[batch.train_mask], batch.y.squeeze()[batch.train_mask].to(model.device))
-    if model.opt['im_chan'] == 3:
-      loss = 0
-      if model.opt['pixel_cat'] == 2 and model.opt['pixel_loss'] == 'binary_sigmoid':
-        loss += lf(torch.stack((out[:,0],out[:,3]),dim=1)[batch.train_mask], batch.y[:,0].squeeze()[batch.train_mask].to(model.device))
-        loss += lf(torch.stack((out[:,1],out[:,4]),dim=1)[batch.train_mask], batch.y[:,1].squeeze()[batch.train_mask].to(model.device))
-        loss += lf(torch.stack((out[:,2],out[:,5]),dim=1)[batch.train_mask], batch.y[:,2].squeeze()[batch.train_mask].to(model.device))
+        if model.opt['im_chan'] == 1:
+            loss = lf(out[batch.train_mask], batch.y.squeeze()[batch.train_mask].to(model.device))
+        if model.opt['im_chan'] == 3:
+            loss = 0
+            if model.opt['pixel_cat'] == 2 and model.opt['pixel_loss'] == 'binary_sigmoid':
+                loss += lf(torch.stack((out[:, 0], out[:, 3]), dim=1)[batch.train_mask],
+                           batch.y[:, 0].squeeze()[batch.train_mask].to(model.device))
+                loss += lf(torch.stack((out[:, 1], out[:, 4]), dim=1)[batch.train_mask],
+                           batch.y[:, 1].squeeze()[batch.train_mask].to(model.device))
+                loss += lf(torch.stack((out[:, 2], out[:, 5]), dim=1)[batch.train_mask],
+                           batch.y[:, 2].squeeze()[batch.train_mask].to(model.device))
 
-      elif model.opt['pixel_cat'] == 10 and model.opt['pixel_loss'] == '10catlogits':
-        for i in range(10):
-          pass #old method taking pixel slices was wrong anyway
-          # loss += lf(torch.stack((out[:, i], out[:, i+9]), dim=1)[batch.train_mask].repeat(3),batch.y.view(-1,1)[batch.train_mask].repeat(3))
-          # A = out[batch.train_mask.repeat(3)]
-          # B = batch.y.view(-1, 1).squeeze()[batch.train_mask.repeat(3)].to(model.device)
-          # loss += lf(A,B)
-          # loss += lf(torch.stack((out[:, i], out[:, i + 9]), dim=1)[batch.train_mask.repeat(3)],
-          #      batch.y.view(-1, 1).squeeze()[batch.train_mask.repeat(3)])
+            elif model.opt['pixel_cat'] == 10 and model.opt['pixel_loss'] == '10catlogits':
+                for i in range(10):
+                    pass  # old method taking pixel slices was wrong anyway
+                    # loss += lf(torch.stack((out[:, i], out[:, i+9]), dim=1)[batch.train_mask].repeat(3),batch.y.view(-1,1)[batch.train_mask].repeat(3))
+                    # A = out[batch.train_mask.repeat(3)]
+                    # B = batch.y.view(-1, 1).squeeze()[batch.train_mask.repeat(3)].to(model.device)
+                    # loss += lf(A,B)
+                    # loss += lf(torch.stack((out[:, i], out[:, i + 9]), dim=1)[batch.train_mask.repeat(3)],
+                    #      batch.y.view(-1, 1).squeeze()[batch.train_mask.repeat(3)])
 
-      elif model.opt['pixel_cat'] > 1 and model.opt['pixel_loss'] == '10catM2':
-        A = out[batch.train_mask]
-        B = batch.y.view(-1, 1).squeeze()[batch.train_mask].to(model.device)
-        loss += lf(A, B)
+            elif model.opt['pixel_cat'] > 1 and model.opt['pixel_loss'] == '10catM2':
+                A = out[batch.train_mask]
+                B = batch.y.view(-1, 1).squeeze()[batch.train_mask].to(model.device)
+                loss += lf(A, B)
 
-      elif model.opt['pixel_loss'] == '10catkmeans':
-        z = out[batch.train_mask].unsqueeze(1)
-        batch_centers = batch.label_centers
-        centers_idx = batch.batch[batch.train_mask]
-        each_batch_centers = []
-        pixel_cat = model.opt['pixel_cat']
-        for i in range(pixel_cat):
-          batch_center = batch_centers[centers_idx * pixel_cat + i].unsqueeze(1)
-          each_batch_centers.append(batch_center)
-        all_batch_centers = torch.cat(each_batch_centers,dim=1)
-        logits = torch.sum((z-all_batch_centers)**2,dim=2)
-        logits = 1 / (logits ** 2 + 1e-5)
-        loss += lf(logits, batch.y[batch.train_mask].squeeze())
+            elif model.opt['pixel_loss'] == '10catkmeans':
+                z = out[batch.train_mask].unsqueeze(1)
+                batch_centers = batch.label_centers
+                centers_idx = batch.batch[batch.train_mask]
+                each_batch_centers = []
+                pixel_cat = model.opt['pixel_cat']
+                for i in range(pixel_cat):
+                    batch_center = batch_centers[centers_idx * pixel_cat + i].unsqueeze(1)
+                    each_batch_centers.append(batch_center)
+                all_batch_centers = torch.cat(each_batch_centers, dim=1)
+                logits = torch.sum((z - all_batch_centers) ** 2, dim=2)
+                logits = 1 / (logits ** 2 + 1e-5)
+                loss += lf(logits, batch.y[batch.train_mask].squeeze())
 
-    model.fm.update(model.getNFE())
-    model.resetNFE()
-    loss.backward()
-    optimizer.step()
-    model.bm.update(model.getNFE())
-    model.resetNFE()
+        model.fm.update(model.getNFE())
+        model.resetNFE()
+        loss.backward()
+        optimizer.step()
+        model.bm.update(model.getNFE())
+        model.resetNFE()
 
-    # if model.opt['testing_code']:
-    if batch_idx % 1 == 0:
-      train_acc = pixel_test(model, batch, "batch","train")
-      test_acc = pixel_test(model, batch, "batch","test")
-      log = 'Batch Index: {}, Runtime {:03f}, Loss {:03f}, forward nfe {:d}, backward nfe {:d}, Train: {:.4f}, Test: {:.4f}'
-      print(log.format(batch_idx, time.time() - start_time, loss, model.fm.sum, model.bm.sum, train_acc, test_acc))
-      loss_path.append(loss)
-      train_acc_path.append(train_acc)
-      test_acc_path.append(test_acc)
+        # if model.opt['testing_code']:
+        if batch_idx % 1 == 0:
+            train_acc = pixel_test(model, batch, "batch", "train")
+            test_acc = pixel_test(model, batch, "batch", "test")
+            log = 'Batch Index: {}, Runtime {:03f}, Loss {:03f}, forward nfe {:d}, backward nfe {:d}, Train: {:.4f}, Test: {:.4f}'
+            print(
+                log.format(batch_idx, time.time() - start_time, loss, model.fm.sum, model.bm.sum, train_acc, test_acc))
+            loss_path.append(loss)
+            train_acc_path.append(train_acc)
+            test_acc_path.append(test_acc)
 
-    #   elif batch_idx % 1 == 0:
-    #     print("Batch Index {}, number of function evals {} in time {}".format(batch_idx, model.fm.sum,
-    #                                                                           time.time() - start_time))
-    # else:
-    #   # if batch_idx % (model.opt['train_size'] / model.opt['batch_size'] / 10) == 0:
-    #   # # if batch_idx % 5 == 0:
-    #   #   test_acc = test(model, data_test)
-    #   #   log = 'Batch Index: {}, Runtime {:03f}, Loss {:03f}, forward nfe {:d}, backward nfe {:d}, Test: {:.4f}'
-    #   #   print(log.format(batch_idx, time.time() - start_time, loss, model.fm.sum, model.bm.sum, test_acc))
-    #   if batch_idx % 1 == 0:
-    #     print("Batch Index {}, number of function evals {} in time {}".format(batch_idx, model.fm.sum,
-    #                                                                           time.time() - start_time))
-    # print("Batch Index {}, number of function evals {} in time {}".format(batch_idx, model.fm.sum,
-    #                                                                       time.time() - start_time))
+        #   elif batch_idx % 1 == 0:
+        #     print("Batch Index {}, number of function evals {} in time {}".format(batch_idx, model.fm.sum,
+        #                                                                           time.time() - start_time))
+        # else:
+        #   # if batch_idx % (model.opt['train_size'] / model.opt['batch_size'] / 10) == 0:
+        #   # # if batch_idx % 5 == 0:
+        #   #   test_acc = test(model, data_test)
+        #   #   log = 'Batch Index: {}, Runtime {:03f}, Loss {:03f}, forward nfe {:d}, backward nfe {:d}, Test: {:.4f}'
+        #   #   print(log.format(batch_idx, time.time() - start_time, loss, model.fm.sum, model.bm.sum, test_acc))
+        #   if batch_idx % 1 == 0:
+        #     print("Batch Index {}, number of function evals {} in time {}".format(batch_idx, model.fm.sum,
+        #                                                                           time.time() - start_time))
+        # print("Batch Index {}, number of function evals {} in time {}".format(batch_idx, model.fm.sum,
+        #                                                                       time.time() - start_time))
 
-  return loss_path, train_acc_path, test_acc_path #loss.item()
+    return loss_path, train_acc_path, test_acc_path  # loss.item()
+
 
 def main(opt):
     csv_path = '../SuperPix/models.csv'
@@ -491,6 +504,7 @@ def main(opt):
 
     return test_acc
 
+
 def test_data(opt):
     opt_permutations = opt_perms(opt)
     for opt_perm, opt in opt_permutations.items():
@@ -511,6 +525,7 @@ def test_data(opt):
         lengths_df = pd.DataFrame.from_dict(data_lengths)
         lengths_df.to_csv(f"../SuperPix/data_lengths")
         break
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()

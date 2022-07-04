@@ -19,9 +19,9 @@ def load_matlab_file(path_file, name_field):
     try:
         if 'ir' in ds.keys():
             data = np.asarray(ds['data'])
-            ir   = np.asarray(ds['ir'])
-            jc   = np.asarray(ds['jc'])
-            out  = sp.csc_matrix((data, ir, jc)).astype(np.float32)
+            ir = np.asarray(ds['ir'])
+            jc = np.asarray(ds['jc'])
+            out = sp.csc_matrix((data, ir, jc)).astype(np.float32)
     except AttributeError:
         # Transpose in case is a dense matrix because of the row- vs column- major ordering between python and matlab
         out = np.asarray(ds).astype(np.float32).T
@@ -29,15 +29,17 @@ def load_matlab_file(path_file, name_field):
     db.close()
     return out
 
-def stack_matrices(x, n_supPix): # stack 2D matrices into a 3D tensor
-    x_rho = x[:,0:n_supPix*n_supPix]
-    x_theta = x[:, n_supPix*n_supPix:]
+
+def stack_matrices(x, n_supPix):  # stack 2D matrices into a 3D tensor
+    x_rho = x[:, 0:n_supPix * n_supPix]
+    x_theta = x[:, n_supPix * n_supPix:]
     x_rho = np.reshape(x_rho, (x_rho.shape[0], int(np.sqrt(x_rho.shape[1])), int(np.sqrt(x_rho.shape[1])), 1))
     x_theta = np.reshape(x_theta, (x_theta.shape[0], int(np.sqrt(x_theta.shape[1])), int(np.sqrt(x_theta.shape[1])), 1))
-    for k in range(x_theta.shape[0]): #set the diagonal of all the theta matrix to a value really close to 0
-        np.fill_diagonal(x_theta[k,:,:,0], 1e-14)
+    for k in range(x_theta.shape[0]):  # set the diagonal of all the theta matrix to a value really close to 0
+        np.fill_diagonal(x_theta[k, :, :, 0], 1e-14)
     y = np.concatenate([x_rho, x_theta], axis=3)
     return y
+
 
 def compute_similarity_matrix(dist_matrix):
     shp = dist_matrix.shape
@@ -45,8 +47,9 @@ def compute_similarity_matrix(dist_matrix):
     sigma = np.mean(dist_matrix[np.isfinite(dist_matrix)])
     for i in range(shp[0]):
         for j in range(shp[1]):
-            if (np.isfinite(dist_matrix[i,j])):
-                dist = np.exp(-dist_matrix[i,j]**2/sigma**2) #the higher the distance the smaller the similarity
+            if (np.isfinite(dist_matrix[i, j])):
+                dist = np.exp(
+                    -dist_matrix[i, j] ** 2 / sigma ** 2)  # the higher the distance the smaller the similarity
                 similarity_matrix[i, j] = dist
             else:
                 similarity_matrix[i, j] = 0
@@ -102,23 +105,24 @@ class Dataset(object):
         tmp = tmp.astype(np.int32)
         return tmp.flatten()
 
+
 if __name__ == "__main__":
     # Data Loading
     # path to the main folder
     n_supPix = 75
     path_main = '../data/SuperMNIST/MNIST/'
     # path to the input descriptors
-    path_train_vals    = os.path.join(path_main,'datasets/mnist_superpixels_data_%d/train_vals.mat' % n_supPix)
-    path_test_vals    = os.path.join(path_main,'datasets/mnist_superpixels_data_%d/test_vals.mat' % n_supPix)
+    path_train_vals = os.path.join(path_main, 'datasets/mnist_superpixels_data_%d/train_vals.mat' % n_supPix)
+    path_test_vals = os.path.join(path_main, 'datasets/mnist_superpixels_data_%d/test_vals.mat' % n_supPix)
     # path to the patches
-    path_coords_train  = os.path.join(path_main,'datasets/mnist_superpixels_data_%d/train_patch_coords.mat' % n_supPix)
-    path_coords_test  = os.path.join(path_main,'datasets/mnist_superpixels_data_%d/test_patch_coords.mat' % n_supPix)
+    path_coords_train = os.path.join(path_main, 'datasets/mnist_superpixels_data_%d/train_patch_coords.mat' % n_supPix)
+    path_coords_test = os.path.join(path_main, 'datasets/mnist_superpixels_data_%d/test_patch_coords.mat' % n_supPix)
     # path to the labels
-    path_train_labels   = os.path.join(path_main,'datasets/MNIST_preproc_train_labels/MNIST_labels.mat')
-    path_test_labels   = os.path.join(path_main,'datasets/MNIST_preproc_test_labels/MNIST_labels.mat')
+    path_train_labels = os.path.join(path_main, 'datasets/MNIST_preproc_train_labels/MNIST_labels.mat')
+    path_test_labels = os.path.join(path_main, 'datasets/MNIST_preproc_test_labels/MNIST_labels.mat')
     # path to the idx centroids
-    path_train_centroids  = os.path.join(path_main,'datasets/mnist_superpixels_data_%d/train_centroids.mat' % n_supPix)
-    path_test_centroids  = os.path.join(path_main,'datasets/mnist_superpixels_data_%d/test_centroids.mat' % n_supPix)
+    path_train_centroids = os.path.join(path_main, 'datasets/mnist_superpixels_data_%d/train_centroids.mat' % n_supPix)
+    path_test_centroids = os.path.join(path_main, 'datasets/mnist_superpixels_data_%d/test_centroids.mat' % n_supPix)
 
     ds = Dataset(path_train_vals, path_test_vals, path_coords_train, path_coords_test, path_train_labels,
-                     path_test_labels, n_supPix)
+                 path_test_labels, n_supPix)

@@ -14,13 +14,14 @@ from skimage.color import label2rgb
 from skimage import segmentation
 import torchvision.transforms as transforms
 
+
 def calc_centroids(pixel_labels, num_centroids):
     centroids = {}
     for i in range(num_centroids):
-        indices = np.where(pixel_labels==i)
-        pixel_labels[pixel_labels==i]
-        x_av = np.mean(indices[1])  #x is im_width is 1st axis
-        y_av = np.mean(indices[0])  #y is im_height is 0th axis
+        indices = np.where(pixel_labels == i)
+        pixel_labels[pixel_labels == i]
+        x_av = np.mean(indices[1])  # x is im_width is 1st axis
+        y_av = np.mean(indices[0])  # y is im_height is 0th axis
         centroids[i] = (x_av, y_av)
     return centroids
 
@@ -29,8 +30,8 @@ def get_centroid_coords_array(num_centroids, centroids):
     x_coords = []
     y_coords = []
     for i in range(num_centroids):
-        x_coords.append(centroids[i][1]) #x is im_width is 1st axis
-        y_coords.append(centroids[i][0]) #y is im_height is 0th axis
+        x_coords.append(centroids[i][1])  # x is im_width is 1st axis
+        y_coords.append(centroids[i][0])  # y is im_height is 0th axis
     return x_coords, y_coords
 
 
@@ -40,18 +41,19 @@ def find_neighbours(labels, boundaries, im_height, im_width):
     for i in range(im_height):
         for j in range(im_width):
             pix = i * im_width + j
-            if boundaries[i][j] ==1:
-                neighbours = np.array([pix-im_width,pix-1,pix+1,pix+im_width])
+            if boundaries[i][j] == 1:
+                neighbours = np.array([pix - im_width, pix - 1, pix + 1, pix + im_width])
                 neighbours = neighbours[neighbours > 0]
-                neighbours = neighbours[neighbours < im_height*im_width]
-                neighbours = neighbours[np.logical_or(neighbours//im_width == pix//im_width, neighbours%im_width == pix%im_width)]
+                neighbours = neighbours[neighbours < im_height * im_width]
+                neighbours = neighbours[
+                    np.logical_or(neighbours // im_width == pix // im_width, neighbours % im_width == pix % im_width)]
                 for n in neighbours:
                     if labels[pix // im_width][pix % im_width] in neighbour_dict:
-                        temp_set = neighbour_dict[labels[pix//im_width][pix%im_width]]
-                        temp_set.add(labels[n//im_width][n%im_width])
-                        neighbour_dict[labels[pix//im_width][pix%im_width]] = temp_set
+                        temp_set = neighbour_dict[labels[pix // im_width][pix % im_width]]
+                        temp_set.add(labels[n // im_width][n % im_width])
+                        neighbour_dict[labels[pix // im_width][pix % im_width]] = temp_set
                     else:
-                        neighbour_dict[labels[pix//im_width][pix%im_width]] = {labels[n//im_width][n%im_width]}
+                        neighbour_dict[labels[pix // im_width][pix % im_width]] = {labels[n // im_width][n % im_width]}
     return neighbour_dict
 
 
@@ -66,52 +68,55 @@ def calc_centroid_values(num_centroids, pixel_labels, pixel_values):
 
 
 def create_edge_index_from_neighbours(neighbour_dict):
-    edge_index = [[],[]]
+    edge_index = [[], []]
     for i, J in neighbour_dict.items():
-        edge_index[0].extend([i]*len(J))
+        edge_index[0].extend([i] * len(J))
         edge_index[1].extend(list(J))
-    return torch.tensor(edge_index,dtype=int)
+    return torch.tensor(edge_index, dtype=int)
+
 
 def transform_objects(im_height, im_width, ySF, xSF, pixel_values, pixel_labels, centroids):
-    #applying transform to various objects
-    resized_pixel_values = skimage.transform.resize(pixel_values, (im_height*ySF,im_width*xSF,3),
-                               mode='edge',
-                               anti_aliasing=False,
-                               anti_aliasing_sigma=None,
-                               preserve_range=True,
-                               order=0)
+    # applying transform to various objects
+    resized_pixel_values = skimage.transform.resize(pixel_values, (im_height * ySF, im_width * xSF, 3),
+                                                    mode='edge',
+                                                    anti_aliasing=False,
+                                                    anti_aliasing_sigma=None,
+                                                    preserve_range=True,
+                                                    order=0)
 
-    resized_pixel_labels = skimage.transform.resize(pixel_labels, (im_height*ySF,im_width*xSF),
-                               mode='edge',
-                               anti_aliasing=False,
-                               anti_aliasing_sigma=None,
-                               preserve_range=True,
-                               order=0)
-    resized_centroids = {key:((pos[0]+1/2)*xSF, (pos[1]+1/2)*ySF) for key, pos in centroids.items()}
-    #don't need to do the x/y reversal here as already performed
+    resized_pixel_labels = skimage.transform.resize(pixel_labels, (im_height * ySF, im_width * xSF),
+                                                    mode='edge',
+                                                    anti_aliasing=False,
+                                                    anti_aliasing_sigma=None,
+                                                    preserve_range=True,
+                                                    order=0)
+    resized_centroids = {key: ((pos[0] + 1 / 2) * xSF, (pos[1] + 1 / 2) * ySF) for key, pos in centroids.items()}
+    # don't need to do the x/y reversal here as already performed
 
     return resized_pixel_values, resized_pixel_labels, resized_centroids
 
+
 def read_data(im_dataset, type):
     if im_dataset == 'MNIST':
-      transform = transforms.Compose([transforms.ToTensor(),
-                                      transforms.Normalize((0.1307,), (0.3081,))])
-      if type == "Train":
-        data = torchvision.datasets.MNIST('../data/MNIST/', train=True, download=True,
-                                          transform=transform)
-      elif type == 'Test':
-        data = torchvision.datasets.MNIST('../data/MNIST/', train=False, download=True,
-                                          transform=transform)
+        transform = transforms.Compose([transforms.ToTensor(),
+                                        transforms.Normalize((0.1307,), (0.3081,))])
+        if type == "Train":
+            data = torchvision.datasets.MNIST('../data/MNIST/', train=True, download=True,
+                                              transform=transform)
+        elif type == 'Test':
+            data = torchvision.datasets.MNIST('../data/MNIST/', train=False, download=True,
+                                              transform=transform)
     elif im_dataset == 'CIFAR':
-      transform = transforms.Compose([transforms.ToTensor(),
-                                      transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
-      if type == "Train":
-        data = torchvision.datasets.CIFAR10('../data/CIFAR/', train=True, download=True,
-                                             transform=transform)
-      elif type == 'Test':
-        data = torchvision.datasets.CIFAR10('../data/CIFAR/', train=False, download=True,
-                                            transform=transform)
+        transform = transforms.Compose([transforms.ToTensor(),
+                                        transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
+        if type == "Train":
+            data = torchvision.datasets.CIFAR10('../data/CIFAR/', train=True, download=True,
+                                                transform=transform)
+        elif type == 'Test':
+            data = torchvision.datasets.CIFAR10('../data/CIFAR/', train=False, download=True,
+                                                transform=transform)
     return data
+
 
 def main(opt):
     ###coordinate convention
@@ -172,7 +177,7 @@ def main(opt):
     plt.show()  # PLOT B/W PATCHES WITHOUT CENTROIDS OR SEGMENTATION
 
     # RESIZING - (TEST IF NEEDED)
-    SF = 448 #56 #480  # 480    #needed as mark_boundaries marks 1 pixel wide either side of boundary
+    SF = 448  # 56 #480  # 480    #needed as mark_boundaries marks 1 pixel wide either side of boundary
     heightSF = SF / im_height
     widthSF = SF / im_width
     pixel_values = color2
@@ -230,8 +235,9 @@ def main(opt):
             node_color=x, cmap=plt.get_cmap('Spectral'))
     # fig.colorbar(cm.ScalarMappable(cmap=plt.get_cmap('Spectral')),
     #              cax=cbar_ax, orientation="vertical")
-    plt.savefig("../models/superpix.pdf",format="pdf")
+    plt.savefig("../models/superpix.pdf", format="pdf")
     plt.show()  # FINAL IMAGE
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -320,6 +326,5 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
     opt = vars(args)
-
 
     main(opt)

@@ -3,6 +3,7 @@ import numpy as np
 import torch
 from torch import nn
 
+
 def get_optimizer(name, parameters, lr, weight_decay=0):
     if name == 'sgd':
         return torch.optim.SGD(parameters, lr=lr, weight_decay=weight_decay)
@@ -16,6 +17,7 @@ def get_optimizer(name, parameters, lr, weight_decay=0):
         return torch.optim.Adamax(parameters, lr=lr, weight_decay=weight_decay)
     else:
         raise Exception("Unsupported optimizer: {}".format(name))
+
 
 # Counter of forward and backward passes.
 class Meter(object):
@@ -40,6 +42,7 @@ class Meter(object):
 
     def get_value(self):
         return self.val
+
 
 class Trainer(object):
     def __init__(self, opt, model):
@@ -72,7 +75,7 @@ class Trainer(object):
 
         self.fm.update(self.model.odeblock.nfe)
         self.model.odeblock.nfe = 0
-        
+
         loss.backward()
         self.optimizer.step()
 
@@ -80,7 +83,7 @@ class Trainer(object):
         self.model.odeblock.nfe = 0
 
         return loss.item()
-    
+
     def updatew(self, inputs, target, idx):
         if self.opt['cuda']:
             inputs = inputs.cuda()
@@ -124,7 +127,7 @@ class Trainer(object):
 
         self.fm.update(self.model.odefunc.ncall)
         self.model.odefunc.ncall = 0
-        
+
         loss.backward()
         self.optimizer.step()
 
@@ -132,7 +135,7 @@ class Trainer(object):
         self.model.odefunc.ncall = 0
 
         return loss.item()
-    
+
     # Evaluate model.
     def evaluate(self, inputs, target, idx):
         if self.opt['cuda']:
@@ -164,9 +167,9 @@ class Trainer(object):
 
     def save(self, filename):
         params = {
-                'model': self.model.state_dict(),
-                'optim': self.optimizer.state_dict()
-                }
+            'model': self.model.state_dict(),
+            'optim': self.optimizer.state_dict()
+        }
         try:
             torch.save(params, filename)
         except BaseException:

@@ -7,46 +7,48 @@ from model_configurations import set_block, set_function
 
 # Define the GNN model.
 class GNN(BaseGNN):
-  def __init__(self, opt, num_features, num_nodes, num_classes, edge_index, edge_attr=None, device=torch.device('cpu')):
-    super(GNN, self).__init__(opt, num_features, device)
-    self.f = set_function(opt)
-    self.block = set_block(opt)
-    time_tensor = torch.tensor([0, self.T]).to(device)
-    # self.odeblocks = nn.ModuleList(
-    #   [self.block(self.f, self.regularization_fns, opt, self.data, device, t=time_tensor) for dummy_i in range(self.n_ode_blocks)]).to(self.device)
-    self.odeblock = self.block(self.f, self.regularization_fns, opt, num_nodes, edge_index, edge_attr, device, t=time_tensor).to(self.device)
-    # todo remove next line as in base class
-    self.m2 = nn.Linear(opt['hidden_dim'], num_classes)
+    def __init__(self, opt, num_features, num_nodes, num_classes, edge_index, edge_attr=None,
+                 device=torch.device('cpu')):
+        super(GNN, self).__init__(opt, num_features, device)
+        self.f = set_function(opt)
+        self.block = set_block(opt)
+        time_tensor = torch.tensor([0, self.T]).to(device)
+        # self.odeblocks = nn.ModuleList(
+        #   [self.block(self.f, self.regularization_fns, opt, self.data, device, t=time_tensor) for dummy_i in range(self.n_ode_blocks)]).to(self.device)
+        self.odeblock = self.block(self.f, self.regularization_fns, opt, num_nodes, edge_index, edge_attr, device,
+                                   t=time_tensor).to(self.device)
+        # todo remove next line as in base class
+        self.m2 = nn.Linear(opt['hidden_dim'], num_classes)
 
-  def forward(self, x):
-    # Encode each node based on its feature.
-    x = F.dropout(x, self.opt['input_dropout'], training=self.training)
-    x = self.m1(x)
-    # todo investigate if some input non-linearity solves the problem with smooth deformations identified in the ANODE paper
-    # if True:
-    #   x = F.relu(x)
+    def forward(self, x):
+        # Encode each node based on its feature.
+        x = F.dropout(x, self.opt['input_dropout'], training=self.training)
+        x = self.m1(x)
+        # todo investigate if some input non-linearity solves the problem with smooth deformations identified in the ANODE paper
+        # if True:
+        #   x = F.relu(x)
 
-    # Solve the initial value problem of the ODE.
-    if self.opt['augment']:
-      c_aux = torch.zeros(x.shape).to(self.device)
-      x = torch.cat([x, c_aux], dim=1)
+        # Solve the initial value problem of the ODE.
+        if self.opt['augment']:
+            c_aux = torch.zeros(x.shape).to(self.device)
+            x = torch.cat([x, c_aux], dim=1)
 
-    self.odeblock.set_x0(x)
+        self.odeblock.set_x0(x)
 
-    if self.training:
-      z, self.reg_states = self.odeblock(x)
-    else:
-      z = self.odeblock(x)
+        if self.training:
+            z, self.reg_states = self.odeblock(x)
+        else:
+            z = self.odeblock(x)
 
-    if self.opt['augment']:
-      z = torch.split(z, x.shape[1] // 2, dim=1)[0]
+        if self.opt['augment']:
+            z = torch.split(z, x.shape[1] // 2, dim=1)[0]
 
-    # Activation.
-    z = F.relu(z)
+        # Activation.
+        z = F.relu(z)
 
-    # Dropout.
-    z = F.dropout(z, self.opt['dropout'], training=self.training)
+        # Dropout.
+        z = F.dropout(z, self.opt['dropout'], training=self.training)
 
-    # Decode each node embedding to get node label.
-    z = self.m2(z)
-    return z
+        # Decode each node embedding to get node label.
+        z = self.m2(z)
+        return z

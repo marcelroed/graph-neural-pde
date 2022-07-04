@@ -6,7 +6,6 @@ from regularized_ODE_function import RegularizedODEfunc
 import regularized_ODE_function as reg_lib
 import six
 
-
 REGULARIZATION_FNS = {
     "kinetic_energy": reg_lib.quadratic_cost,
     "jacobian_norm2": reg_lib.jacobian_frobenius_regularization_fn,
@@ -30,105 +29,105 @@ def create_regularization_fns(args):
 
 
 class ODEblock(nn.Module):
-  def __init__(self, odefunc, regularization_fns, opt, t):
-    super(ODEblock, self).__init__()
-    self.opt = opt
-    self.t = t
-    # self.data = data
+    def __init__(self, odefunc, regularization_fns, opt, t):
+        super(ODEblock, self).__init__()
+        self.opt = opt
+        self.t = t
+        # self.data = data
 
-    self.aug_dim = 2 if opt['augment'] else 1
-    # self.odefunc = odefunc(self.aug_dim * opt['hidden_dim'], self.aug_dim * opt['hidden_dim'], opt, self.data, device)
+        self.aug_dim = 2 if opt['augment'] else 1
+        # self.odefunc = odefunc(self.aug_dim * opt['hidden_dim'], self.aug_dim * opt['hidden_dim'], opt, self.data, device)
 
-    self.nreg = len(regularization_fns)
-    # self.reg_odefunc = RegularizedODEfunc(self.odefunc, regularization_fns)
+        self.nreg = len(regularization_fns)
+        # self.reg_odefunc = RegularizedODEfunc(self.odefunc, regularization_fns)
 
-    if opt['adjoint']:
-      from torchdiffeq import odeint_adjoint as odeint
-    else:
-      from torchdiffeq import odeint
-    self.train_integrator = odeint
-    self.test_integrator = None
-    self.set_tol()
+        if opt['adjoint']:
+            from torchdiffeq import odeint_adjoint as odeint
+        else:
+            from torchdiffeq import odeint
+        self.train_integrator = odeint
+        self.test_integrator = None
+        self.set_tol()
 
-  def set_x0(self, x0):
-    self.odefunc.x0 = x0.clone().detach()
-    self.reg_odefunc.odefunc.x0 = x0.clone().detach()
+    def set_x0(self, x0):
+        self.odefunc.x0 = x0.clone().detach()
+        self.reg_odefunc.odefunc.x0 = x0.clone().detach()
 
-  def set_tol(self):
-    self.atol = self.opt['tol_scale'] * 1e-7
-    self.rtol = self.opt['tol_scale'] * 1e-9
-    if self.opt['adjoint']:
-      self.atol_adjoint = self.opt['tol_scale_adjoint'] * 1e-7
-      self.rtol_adjoint = self.opt['tol_scale_adjoint'] * 1e-9
+    def set_tol(self):
+        self.atol = self.opt['tol_scale'] * 1e-7
+        self.rtol = self.opt['tol_scale'] * 1e-9
+        if self.opt['adjoint']:
+            self.atol_adjoint = self.opt['tol_scale_adjoint'] * 1e-7
+            self.rtol_adjoint = self.opt['tol_scale_adjoint'] * 1e-9
 
-  def reset_tol(self):
-    self.atol = 1e-7
-    self.rtol = 1e-9
-    self.atol_adjoint = 1e-7
-    self.rtol_adjoint = 1e-9
+    def reset_tol(self):
+        self.atol = 1e-7
+        self.rtol = 1e-9
+        self.atol_adjoint = 1e-7
+        self.rtol_adjoint = 1e-9
 
-  def set_time(self, time):
-    self.t = torch.tensor([0, time]).to(self.device)
+    def set_time(self, time):
+        self.t = torch.tensor([0, time]).to(self.device)
 
-  def __repr__(self):
-    return self.__class__.__name__ + '( Time Interval ' + str(self.t[0].item()) + ' -> ' + str(self.t[1].item()) \
-           + ")"
+    def __repr__(self):
+        return self.__class__.__name__ + '( Time Interval ' + str(self.t[0].item()) + ' -> ' + str(self.t[1].item()) \
+               + ")"
 
 
 class ODEFunc(MessagePassing):
 
-  # currently requires in_features = out_features
-  def __init__(self, opt, device):
-    super(ODEFunc, self).__init__()
-    self.opt = opt
-    self.device = device
-    self.edge_index = None
-    self.edge_weight = None
-    self.attention_weights = None
-    # self.alpha_train = nn.Parameter(torch.tensor(0.0))
-    # self.beta_train =  nn.Parameter(torch.tensor(0.0))
-    self.register_buffer('alpha_train',torch.ones(1))
-    self.register_buffer('beta_train',torch.zeros(1))
-    self.x0 = None
-    self.nfe = 0
-    # self.alpha_sc = nn.Parameter(torch.ones(1))
-    # self.beta_sc = nn.Parameter(torch.ones(1))
-    self.register_buffer('alpha_sc',torch.ones(1))
-    self.register_buffer('beta_sc',torch.zeros(1))
+    # currently requires in_features = out_features
+    def __init__(self, opt, device):
+        super(ODEFunc, self).__init__()
+        self.opt = opt
+        self.device = device
+        self.edge_index = None
+        self.edge_weight = None
+        self.attention_weights = None
+        # self.alpha_train = nn.Parameter(torch.tensor(0.0))
+        # self.beta_train =  nn.Parameter(torch.tensor(0.0))
+        self.register_buffer('alpha_train', torch.ones(1))
+        self.register_buffer('beta_train', torch.zeros(1))
+        self.x0 = None
+        self.nfe = 0
+        # self.alpha_sc = nn.Parameter(torch.ones(1))
+        # self.beta_sc = nn.Parameter(torch.ones(1))
+        self.register_buffer('alpha_sc', torch.ones(1))
+        self.register_buffer('beta_sc', torch.zeros(1))
 
-  def __repr__(self):
-    return self.__class__.__name__
+    def __repr__(self):
+        return self.__class__.__name__
 
 
 class BaseGNN(MessagePassing):
-  def __init__(self, opt, num_features, device=torch.device('cpu')):
-    super(BaseGNN, self).__init__()
-    self.opt = opt
-    # self.data = data.to(device)
-    self.T = opt['time']
-    self.device = device
-    self.fm = Meter()
-    self.bm = Meter()
-    self.m1 = nn.Linear(num_features, opt['hidden_dim'])
-    try:
-      self.n_ode_blocks = opt['ode_blocks']
-    except KeyError:
-      self.n_ode_blocks = 1
+    def __init__(self, opt, num_features, device=torch.device('cpu')):
+        super(BaseGNN, self).__init__()
+        self.opt = opt
+        # self.data = data.to(device)
+        self.T = opt['time']
+        self.device = device
+        self.fm = Meter()
+        self.bm = Meter()
+        self.m1 = nn.Linear(num_features, opt['hidden_dim'])
+        try:
+            self.n_ode_blocks = opt['ode_blocks']
+        except KeyError:
+            self.n_ode_blocks = 1
 
-    # self.m2 = nn.Linear(opt['hidden_dim'], opt['pixel_cat'])
+        # self.m2 = nn.Linear(opt['hidden_dim'], opt['pixel_cat'])
 
-    self.regularization_fns, self.regularization_coeffs = create_regularization_fns(self.opt)
+        self.regularization_fns, self.regularization_coeffs = create_regularization_fns(self.opt)
 
-  def getNFE(self):
-    return self.odeblock.odefunc.nfe + self.odeblock.reg_odefunc.odefunc.nfe
+    def getNFE(self):
+        return self.odeblock.odefunc.nfe + self.odeblock.reg_odefunc.odefunc.nfe
 
-  def resetNFE(self):
-    self.odeblock.odefunc.nfe = 0
-    self.odeblock.reg_odefunc.odefunc.nfe = 0
+    def resetNFE(self):
+        self.odeblock.odefunc.nfe = 0
+        self.odeblock.reg_odefunc.odefunc.nfe = 0
 
-  def reset(self):
-    self.m1.reset_parameters()
-    self.m2.reset_parameters()
+    def reset(self):
+        self.m1.reset_parameters()
+        self.m2.reset_parameters()
 
-  def __repr__(self):
-    return self.__class__.__name__
+    def __repr__(self):
+        return self.__class__.__name__

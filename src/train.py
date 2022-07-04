@@ -16,9 +16,9 @@ def main(opt):
     device = torch.device('cpu')
     opt['cuda'] = False
 
-    #--------------------------------------------------
+    # --------------------------------------------------
     # Load data.
-    #--------------------------------------------------
+    # --------------------------------------------------
     net_file = opt['dataset'] + '/net.txt'
     label_file = opt['dataset'] + '/label.txt'
     feature_file = opt['dataset'] + '/feature.txt'
@@ -41,7 +41,7 @@ def main(opt):
     feature.to_one_hot(binary=True)
     adj = graph.get_sparse_adjacency(opt['cuda'])
     deg = torch.zeros(adj.shape[0])
-    for k,v  in d.items():
+    for k, v in d.items():
         deg[k] = v
 
     with open(train_file, 'r') as fi:
@@ -64,9 +64,9 @@ def main(opt):
     #     idx_dev = idx_dev.cuda()
     #     idx_test = idx_test.cuda()
 
-    #--------------------------------------------------
+    # --------------------------------------------------
     # Build model.
-    #--------------------------------------------------
+    # --------------------------------------------------
     if opt['weight']:
         gnn = WGNN(opt, adj, deg, opt['time'], device)
     else:
@@ -77,9 +77,9 @@ def main(opt):
     print(gnn)
     print(opt)
 
-    #--------------------------------------------------
+    # --------------------------------------------------
     # Train model.
-    #--------------------------------------------------
+    # --------------------------------------------------
     def train(epochs):
         best = 0.0
         results = []
@@ -104,7 +104,7 @@ def main(opt):
             # -----------------------
             _, preds, accuracy_test = trainer.evaluate(inputs, target, idx_test)
             print(
-                'Epoch: {} | Runtime {:.3f} | forward evals {:d} | Backward evals {:d} | Loss: {:.3f} ' 
+                'Epoch: {} | Runtime {:.3f} | forward evals {:d} | Backward evals {:d} | Loss: {:.3f} '
                 '| Dev acc: {:.3f} | Test acc: {:.3f} | Forward: {} {:.3f} | Backward: {} {:.3f}'.format(
                     epoch,
                     time.time() - start_time,
@@ -128,7 +128,6 @@ def main(opt):
 
     results = train(opt['epoch'])
 
-
     def get_accuracy(results):
         best_dev, acc_test, best_epoch = 0.0, 0.0, 0
         for d, t, e in results:
@@ -138,9 +137,10 @@ def main(opt):
 
     acc_test, best_dev, best_epoch = get_accuracy(results)
 
-    print('best test acc: {:.3f} dev acc: {:.3f} at epoch: {}'.format(acc_test*100, best_dev*100, best_epoch))
+    print('best test acc: {:.3f} dev acc: {:.3f} at epoch: {}'.format(acc_test * 100, best_dev * 100, best_epoch))
 
     return acc_test
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -175,5 +175,3 @@ if __name__ == '__main__':
     opt = vars(args)
 
     main(opt)
-
-
