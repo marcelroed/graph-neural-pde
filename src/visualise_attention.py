@@ -109,6 +109,9 @@ if __name__ == '__main__':
     parser.add_argument('--directional_penalty', type=float, default=None, help="int_t ||(df/dx)^T f||^2")
     parser.add_argument('--rewiring', type=bool, default=True, help='Use rewiring')
     parser.add_argument('--beltrami', type=bool, default=True, help='Use beltrami flow')
+    parser.add_argument('--feat_hidden_dim', type=int, default=64, help='Hidden dimension for the feature transform')
+    parser.add_argument('--pos_enc_dim', type=str, default='row', help='Hidden dimension for the position encoder')
+    parser.add_argument('--pos_enc_hidden_dim', type=int, default=8, help='Hidden dimension for the position encoder')
 
     args = parser.parse_args()
 
